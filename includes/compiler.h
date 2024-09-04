@@ -3,6 +3,7 @@
 
 #include "common.h"
 #include "program.h"
+#include "tokenizer.h"
 
 program_t compile(const char *);
 

@@ -9,4 +9,7 @@
 #include <string.h>
 #include <assert.h>
 
+#define NOT_IMPLEMENTED assert(0 && "Not Implemented")
+#define UNREACHABLE     assert(0 && "Unreachable")
+
 #endif // CLOX_COMMON_H

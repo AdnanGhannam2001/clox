@@ -9,6 +9,11 @@
 typedef enum op_code
 {
     OP_CONSTANT,
+    OP_ADD,
+    OP_SUB,
+    OP_MULTI,
+    OP_DIV,
+    OP_NEGATE,
     OP_RETURN,
 
     OP_COUNT

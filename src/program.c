@@ -57,6 +57,26 @@ void program_instruction_disassemble(program_t *program, size_t *i)
             printf("OP_CONSTANT\t");
             printf("%g\n", program->constants.items[program->chunks.items[++(*i)]]);
         } break;
+    case OP_ADD:
+        {
+            printf("OP_ADD\n");
+        } break;
+    case OP_SUB:
+        {
+            printf("OP_SUB\n");
+        } break;
+    case OP_MULTI:
+        {
+            printf("OP_MULTI\n");
+        } break;
+    case OP_DIV:
+        {
+            printf("OP_DIV\n");
+        } break;
+    case OP_NEGATE:
+        {
+            printf("OP_NEGATE\n");
+        } break;
     case OP_RETURN:
         {
             printf("OP_RETURN\n");

@@ -37,7 +37,6 @@ void program_free(program_t *program)
     value_array_free(&program->constants);
 }
 
-#ifdef CLOX_DEBUG
 void program_disassemble(program_t *program, const char *name)
 {
     printf("=== %s ===\n", name);
@@ -66,4 +65,3 @@ void program_instruction_disassemble(program_t *program, size_t *i)
         fprintf(stderr, "Unknown instruction %u\n", program->chunks.items[*i]);
     }
 }
-#endif // CLOX_DEBUG

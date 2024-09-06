@@ -1,5 +1,5 @@
-CC= clang
-CFLAGS= -Wall -Wextra -Wunknown-pragmas -std=c99
+CC= gcc
+CFLAGS= -Wall -Wextra -Wpointer-sign -Wcast-qual -Wunknown-pragmas -std=c99
 
 ifeq ($(DEBUG), 1)
 	CFLAGS+= -DCLOX_DEBUG -g 

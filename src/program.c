@@ -9,7 +9,7 @@ void program_init(program_t *program)
     value_array_init(&program->constants);
 }
 
-void program_write(program_t *program, op_code_t value, ...)
+int program_write(program_t *program, op_code_t value, ...)
 {
     assert(value < OP_COUNT);
 
@@ -22,6 +22,11 @@ void program_write(program_t *program, op_code_t value, ...)
     {
     case OP_CONSTANT:
         {
+            if (program->constants.count > UINT8_MAX)
+            {
+                fprintf(stderr, "Too many constants, max is: %d\n", UINT8_MAX);
+                return -1;
+            }
             // TODO make an assertion on the number of args
             value_array_write(&program->constants, va_arg(args, value_t));
             chunk_array_write(&program->chunks, program->constants.count - 1);
@@ -30,6 +35,7 @@ void program_write(program_t *program, op_code_t value, ...)
     }
 
     va_end(args);
+    return 0;
 }
 
 void program_free(program_t *program)

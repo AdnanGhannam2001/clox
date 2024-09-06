@@ -32,7 +32,7 @@ typedef struct program
 } program_t;
 
 void program_init(program_t *program);
-void program_write(program_t *program, op_code_t value, ...);
+int program_write(program_t *program, op_code_t value, ...);
 void program_free(program_t *program);
 void program_disassemble(program_t *program, const char *name);
 void program_instruction_disassemble(program_t *program, size_t *i);

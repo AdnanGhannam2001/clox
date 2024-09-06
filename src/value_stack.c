@@ -3,7 +3,7 @@
 void value_stack_init(value_stack_t *stack)
 {
     stack->count = 0;
-    memset(stack->items, 0, CLOX_VALUE_STACK_MAX);
+    memset(stack->items, 0, CLOX_VALUE_STACK_MAX * sizeof(double));
 }
 
 void value_stack_push(value_stack_t *stack, value_t value)

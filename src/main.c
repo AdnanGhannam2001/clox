@@ -57,7 +57,7 @@ static int read_file(const char *filename, char **output)
         goto close;
     }
 
-    size_t file_size = ftell(file);
+    long int file_size = ftell(file);
     if (file_size < 0)
     {
         fprintf(stderr, "ERROR: Couldn't read file %s, %s\n", filename, strerror(file_size));

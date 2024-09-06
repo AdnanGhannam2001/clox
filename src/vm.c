@@ -37,7 +37,6 @@ static interpret_result_t vm_run(vm_t *vm)
                 } break;
             case OP_RETURN:
                 {
-                    value_stack_pop(&vm->stack);
                     return INTERPRET_RESULT_OK;
                 }
         }
@@ -57,9 +56,8 @@ interpret_result_t vm_interpret(vm_t *vm, program_t *program)
     vm->program = program;
     vm->ip = program->chunks.items;
 
-    NOT_IMPLEMENTED;
-
     return vm_run(vm);
 }
 
+// TODO
 void vm_free(vm_t *vm) { (void)vm; }

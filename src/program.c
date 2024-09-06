@@ -22,6 +22,7 @@ void program_write(program_t *program, op_code_t value, ...)
     {
     case OP_CONSTANT:
         {
+            // TODO make an assertion on the number of args
             value_array_write(&program->constants, va_arg(args, value_t));
             chunk_array_write(&program->chunks, program->constants.count - 1);
         } break;

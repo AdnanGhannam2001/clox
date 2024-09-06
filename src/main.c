@@ -1,17 +1,31 @@
 #include <errno.h>
+#include "common.h"
 #include "vm.h"
 #include "compiler.h"
 #include "program.h"
 
+// FIXME
 vm_t vm;
 
-static void execute(const char *source)
+static interpret_result_t execute(const char *source)
 {
-    program_t program = compile(source);
+    program_t program;
+    program_init(&program);
+
+    compiler_t compiler;
+    if (compiler_run(&compiler, source, &program) != 0)
+    {
+        program_free(&program);
+        return INTERPRET_RESULT_COMPILE_ERROR;
+    }
+
     vm_interpret(&vm, &program);
+    program_free(&program);
+
+    return INTERPRET_RESULT_OK;
 }
 
-static int repl()
+static void repl()
 {
     char line[UINT8_MAX * 4];
 
@@ -23,7 +37,6 @@ static int repl()
     }
 
     printf("\n");
-    return 0;
 }
 
 static int read_file(const char *filename, char **output)
@@ -65,18 +78,9 @@ exit:
     return ret;
 }
 
-static int from_file(const char *filename)
+static interpret_result_t from_file(const char* content)
 {
-    char *content;
-    int ret = read_file(filename, &content);
-
-    if (ret == 0)
-    {
-        execute(content);
-        free(content);
-    }
-
-    return ret;
+    return execute(content);
 }
 
 int main(int argc, const char *argv[])
@@ -93,11 +97,17 @@ int main(int argc, const char *argv[])
 
     if (argc == 1)
     {
-        ret = repl();
+        repl();
     }
     else
     {
-        ret = from_file(argv[1]);
+        char *content;
+        if ((ret = read_file(argv[1], &content)) == 0)
+        {
+            ret = from_file(content);
+        }
+
+        free(content);
     }
 
     vm_free(&vm);

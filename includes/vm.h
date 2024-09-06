@@ -12,13 +12,6 @@ typedef struct vm
     value_stack_t stack;
 } vm_t;
 
-typedef enum interpret_result
-{
-    INTERPRET_RESULT_OK,
-    INTERPRET_RESULT_COMPILE_ERROR,
-    INTERPRET_RESULT_RUNTIME_ERROR,
-} interpret_result_t;
-
 void vm_init(vm_t *);
 interpret_result_t vm_interpret(vm_t *, program_t *program);
 void vm_free(vm_t *);

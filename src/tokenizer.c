@@ -12,7 +12,7 @@ static token_t token(tokenizer_t *tokenizer, const token_type_t type)
     token_t token = (token_t){
         .type = type,
         .start = tokenizer->start,
-        .length = tokenizer->current - tokenizer->start,
+        .length = (size_t)(tokenizer->current - tokenizer->start),
         .line = tokenizer->line};
 
     tokenizer->start = tokenizer->current;
@@ -79,7 +79,7 @@ static token_t identifier(tokenizer_t *tokenizer)
     while (is_alpha_numeric(*tokenizer->current)) { tokenizer->current++; }
 
     char name[tokenizer->current - tokenizer->start];
-    strncpy(name, tokenizer->start, tokenizer->current - tokenizer->start + 1);
+    strncpy(name, tokenizer->start, (size_t)(tokenizer->current - tokenizer->start + 1));
     name[tokenizer->current - tokenizer->start] = '\0';
 
     token_type_t kw = keyword(name);

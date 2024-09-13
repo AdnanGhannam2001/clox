@@ -57,19 +57,19 @@ static int read_file(const char *filename, char **output)
         goto close;
     }
 
-    long int file_size = ftell(file);
+    long file_size = ftell(file);
     if (file_size < 0)
     {
-        fprintf(stderr, "ERROR: Couldn't read file %s, %s\n", filename, strerror(file_size));
+        fprintf(stderr, "ERROR: Couldn't read file %s, %s\n", filename, strerror((int)file_size));
         goto close;
     }
 
     rewind(file);
 
-    *output = (char *)malloc(file_size + 1);
+    *output = (char *)malloc((size_t)file_size + 1);
     assert(*output != NULL);
 
-    fread(*output, sizeof(char), file_size, file);
+    fread(*output, sizeof(char), (size_t)file_size, file);
     (*output)[file_size] = '\0';
 
 close:
@@ -78,7 +78,7 @@ exit:
     return ret;
 }
 
-static interpret_result_t from_file(const char* content)
+static interpret_result_t from_file(const char *content)
 {
     return execute(content);
 }
@@ -101,7 +101,7 @@ int main(int argc, const char *argv[])
     }
     else
     {
-        char *content;
+        char *content = NULL;
         if ((ret = read_file(argv[1], &content)) == 0)
         {
             ret = from_file(content);

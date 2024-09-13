@@ -29,7 +29,7 @@ int program_write(program_t *program, op_code_t value, ...)
             }
             // TODO make an assertion on the number of args
             value_array_write(&program->constants, va_arg(args, value_t));
-            chunk_array_write(&program->chunks, program->constants.count - 1);
+            chunk_array_write(&program->chunks, (uint8_t)program->constants.count - 1);
         } break;
     default: {}
     }

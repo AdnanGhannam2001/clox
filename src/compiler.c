@@ -116,7 +116,7 @@ static compiler_error_t binary(compiler_t *compiler)
     token_type_t op = compiler->prev.type;
 
     rule_t rule = rules[op];
-    if ((error = expression(compiler, rule.precedence)) != 0)
+    if ((error = expression(compiler, rule.precedence + 1)) != 0)
         return error;
 
     switch (op)

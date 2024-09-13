@@ -9,6 +9,7 @@ void vm_error(vm_t *vm, const char *fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
+    fprintf(stderr, "[INTERPRETER] ERROR: ");
     vfprintf(stderr, fmt, args);
     va_end(args);
     fputc('\n', stderr);
@@ -20,16 +21,16 @@ static interpret_result_t vm_run(vm_t *vm)
 {
 #define READ_INSTRUCTION(vm) (*(vm)->ip++)
 #define READ_CONSTANT(vm) ((vm)->program->constants.items[READ_INSTRUCTION(vm)])
-#define BINARY_OP(vm, cast, op)                                                              \
-    do                                                                                 \
-    {                                                                                  \
-        value_t right = value_stack_pop(&vm->stack);                                   \
-        value_t left = value_stack_pop(&vm->stack);                                    \
-        if (!IS_NUMBER(right) || !IS_NUMBER(left))                                     \
-        {                                                                              \
-            vm_error(vm, "Operands for '+', '-', '*' and '/' must be numbers");        \
-            return INTERPRET_RESULT_RUNTIME_ERROR;                                     \
-        }                                                                              \
+#define BINARY_OP(vm, cast, op)                                                  \
+    do                                                                           \
+    {                                                                            \
+        value_t right = value_stack_pop(&vm->stack);                             \
+        value_t left = value_stack_pop(&vm->stack);                              \
+        if (!IS_NUMBER(right) || !IS_NUMBER(left))                               \
+        {                                                                        \
+            vm_error(vm, "Operands for '+', '-', '*' and '/' must be numbers");  \
+            return INTERPRET_RESULT_RUNTIME_ERROR;                               \
+        }                                                                        \
         value_stack_push(&vm->stack, cast(AS_NUMBER(left) op AS_NUMBER(right))); \
     } while (0);
 
@@ -114,7 +115,7 @@ static interpret_result_t vm_run(vm_t *vm)
 
 #ifdef CLOX_DEBUG
         value_stack_print(&vm->stack);
-#endif // DEBUG
+#endif // CLOX_DEBUG
     }
 
 #undef BINARY_OP
@@ -130,5 +131,7 @@ interpret_result_t vm_interpret(vm_t *vm, program_t *program)
     return vm_run(vm);
 }
 
-// TODO
-void vm_free(vm_t *vm) { (void)vm; }
+void vm_free(vm_t *vm)
+{
+    value_stack_init(&vm->stack);
+}

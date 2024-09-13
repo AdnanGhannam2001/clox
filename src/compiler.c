@@ -61,7 +61,7 @@ static compiler_error_t expression(compiler_t *compiler, precedence_t precedence
 
     if (prefix == NULL)
     {
-        fprintf(stderr, "Expected expression\n");
+        compiler_error(compiler, "Expected expression");
         error = COMPILER_ERROR_EXPRESSION_EXPECTED;
         goto out;
     }
@@ -69,7 +69,6 @@ static compiler_error_t expression(compiler_t *compiler, precedence_t precedence
     if ((error = prefix(compiler) != 0))
         goto out;
 
-    printf("%d < %d\n", precedence, rules[compiler->curr.type].precedence);
     while (precedence <= rules[compiler->curr.type].precedence)
     {
         advance(compiler);
@@ -195,8 +194,9 @@ static compiler_error_t consume(compiler_t *compiler, const token_type_t type)
 {
     if (compiler->curr.type != type)
     {
-        // TODO print tokens as string
-        fprintf(stderr, "Unexpected token %d, expected %d\n", compiler->curr.type, type);
+        compiler_error(compiler, "Unexpected token '%s', expected '%s'",
+                       tokenizer_token_name(compiler->curr.type),
+                       tokenizer_token_name(type));
         return COMPILER_ERROR_UNEXPECTED_TOKEN;
     }
 
@@ -209,6 +209,18 @@ void compiler_init(compiler_t *compiler, tokenizer_t *tokenizer, program_t *prog
     compiler->tokenizer = tokenizer;
     compiler->program = program;
     compiler->curr = tokenizer_next(tokenizer);
+}
+
+void compiler_error(compiler_t *compiler, const char *fmt, ...)
+{
+    (void) compiler;
+
+    va_list args;
+    va_start(args, fmt);
+    fprintf(stderr, "[COMPILER] ERROR: ");
+    vfprintf(stderr, fmt, args);
+    va_end(args);
+    fputc('\n', stderr);
 }
 
 compiler_error_t compiler_run(compiler_t *compiler, const char *source, program_t *program)

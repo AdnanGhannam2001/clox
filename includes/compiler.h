@@ -47,7 +47,8 @@ typedef struct rule
     precedence_t precedence;
 } rule_t;
 
-void compiler_init(compiler_t *compiler, tokenizer_t *tokenizer, program_t *program);
-compiler_error_t compiler_run(compiler_t *, const char *, program_t *program);
+void compiler_init(compiler_t *, tokenizer_t *, program_t *);
+void compiler_error(compiler_t *, const char *fmt, ...);
+compiler_error_t compiler_run(compiler_t *, const char *, program_t *);
 
 #endif // CLOX_COMPILER_H

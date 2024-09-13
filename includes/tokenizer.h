@@ -48,5 +48,6 @@ typedef struct tokenizer
 
 void tokenizer_init(tokenizer_t *, const char *source);
 token_t tokenizer_next(tokenizer_t *);
+const char* tokenizer_token_name(const token_type_t);
 
 #endif // CLOX_TOKENIZER_H

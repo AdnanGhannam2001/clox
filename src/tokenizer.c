@@ -1,12 +1,5 @@
 #include "tokenizer.h"
 
-void tokenizer_init(tokenizer_t *tokenizer, const char *source)
-{
-    tokenizer->start = source;
-    tokenizer->current = source;
-    tokenizer->line = 1;
-}
-
 static token_t token(tokenizer_t *tokenizer, const token_type_t type)
 {
     token_t token = (token_t){
@@ -104,6 +97,64 @@ static token_t string(tokenizer_t *tokenizer)
     }
 
     return token(tokenizer, TOKEN_ERROR);
+}
+
+void tokenizer_init(tokenizer_t *tokenizer, const char *source)
+{
+    tokenizer->start = source;
+    tokenizer->current = source;
+    tokenizer->line = 1;
+}
+
+const char* tokenizer_token_name(const token_type_t type)
+{
+    if (type > TOKEN_COUNT)
+        NOT_IMPLEMENTED;
+
+    switch(type)
+    {
+        case TOKEN_LEFT_PAREN:    { return "("; }
+        case TOKEN_RIGHT_PAREN:   { return ")"; }
+        case TOKEN_LEFT_BRACE:    { return "{"; }
+        case TOKEN_RIGHT_BRACE:   { return "}"; }
+        case TOKEN_COMMA:         { return ","; }
+        case TOKEN_DOT:           { return "."; }
+        case TOKEN_MINUS:         { return "-"; }
+        case TOKEN_PLUS:          { return "+"; }
+        case TOKEN_SEMICOLON:     { return ";"; }
+        case TOKEN_SLASH:         { return "/"; }
+        case TOKEN_STAR:          { return "*"; }
+        case TOKEN_BANG:          { return "!"; }
+        case TOKEN_BANG_EQUAL:    { return "!="; }
+        case TOKEN_EQUAL:         { return "="; }
+        case TOKEN_EQUAL_EQUAL:   { return "=="; }
+        case TOKEN_GREATER:       { return "<"; }
+        case TOKEN_GREATER_EQUAL: { return "<="; }
+        case TOKEN_LESS:          { return ">"; }
+        case TOKEN_LESS_EQUAL:    { return ">="; }
+        case TOKEN_IDENTIFIER:    { return "Identifier"; }
+        case TOKEN_STRING:        { return "String"; }
+        case TOKEN_NUMBER:        { return "Number"; }
+        case TOKEN_AND:           { return "and"; }
+        case TOKEN_CLASS:         { return "class"; }
+        case TOKEN_ELSE:          { return "else"; }
+        case TOKEN_FALSE:         { return "false"; }
+        case TOKEN_FOR:           { return "for"; }
+        case TOKEN_FUN:           { return "fun"; }
+        case TOKEN_IF:            { return "if"; }
+        case TOKEN_NIL:           { return "nil"; }
+        case TOKEN_OR:            { return "or"; }
+        case TOKEN_PRINT:         { return "print"; }
+        case TOKEN_RETURN:        { return "return"; }
+        case TOKEN_SUPER:         { return "super"; }
+        case TOKEN_THIS:          { return "this"; }
+        case TOKEN_TRUE:          { return "true"; }
+        case TOKEN_VAR:           { return "var"; }
+        case TOKEN_WHILE:         { return "while"; }
+        case TOKEN_ERROR:         { return "Error"; }
+        case TOKEN_EOF:           { return "EoF"; }
+        default: UNREACHABLE;
+    }
 }
 
 token_t tokenizer_next(tokenizer_t *tokenizer)

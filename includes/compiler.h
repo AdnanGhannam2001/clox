@@ -48,8 +48,6 @@ typedef struct rule
 } rule_t;
 
 void compiler_init(compiler_t *compiler, tokenizer_t *tokenizer, program_t *program);
-void compiler_advance(compiler_t *);
-compiler_error_t compiler_consume(compiler_t *, const token_type_t);
 compiler_error_t compiler_run(compiler_t *, const char *, program_t *program);
 
 #endif // CLOX_COMPILER_H

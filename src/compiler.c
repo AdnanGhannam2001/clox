@@ -5,6 +5,8 @@ static compiler_error_t number(compiler_t *compiler);
 static compiler_error_t unary(compiler_t *compiler);
 static compiler_error_t binary(compiler_t *compiler);
 static compiler_error_t grouping(compiler_t *compiler);
+static void advance(compiler_t *);
+static compiler_error_t consume(compiler_t *, const token_type_t);
 
 static const rule_t rules[] =
 {
@@ -54,7 +56,7 @@ static compiler_error_t expression(compiler_t *compiler, precedence_t precedence
 {
     compiler_error_t error = COMPILER_ERROR_NONE;
 
-    compiler_advance(compiler);
+    advance(compiler);
     parse_fn prefix = rules[compiler->prev.type].prefix;
 
     if (prefix == NULL)
@@ -69,7 +71,7 @@ static compiler_error_t expression(compiler_t *compiler, precedence_t precedence
 
     while (precedence < rules[compiler->curr.type].precedence)
     {
-        compiler_advance(compiler);
+        advance(compiler);
         if ((error = rules[compiler->prev.type].infix(compiler)) != 0)
             goto out;
     }
@@ -152,26 +154,19 @@ static compiler_error_t grouping(compiler_t *compiler)
     if ((error = expression(compiler, PREC_CALL)) != 0)
         return error;
 
-    if ((error = compiler_consume(compiler, TOKEN_EOF)) != 0)
+    if ((error = consume(compiler, TOKEN_EOF)) != 0)
         return error;
 
     return COMPILER_ERROR_NONE;
 }
 
-void compiler_init(compiler_t *compiler, tokenizer_t *tokenizer, program_t *program)
-{
-    compiler->tokenizer = tokenizer;
-    compiler->program = program;
-    compiler->curr = tokenizer_next(tokenizer);
-}
-
-void compiler_advance(compiler_t *compiler)
+static void advance(compiler_t *compiler)
 {
     compiler->prev = compiler->curr;
     compiler->curr = tokenizer_next(compiler->tokenizer);
 }
 
-compiler_error_t compiler_consume(compiler_t *compiler, const token_type_t type)
+static compiler_error_t consume(compiler_t *compiler, const token_type_t type)
 {
     if (compiler->curr.type != type)
     {
@@ -180,8 +175,15 @@ compiler_error_t compiler_consume(compiler_t *compiler, const token_type_t type)
         return COMPILER_ERROR_UNEXPECTED_TOKEN;
     }
 
-    compiler_advance(compiler);
+    advance(compiler);
     return COMPILER_ERROR_NONE;
+}
+
+void compiler_init(compiler_t *compiler, tokenizer_t *tokenizer, program_t *program)
+{
+    compiler->tokenizer = tokenizer;
+    compiler->program = program;
+    compiler->curr = tokenizer_next(tokenizer);
 }
 
 compiler_error_t compiler_run(compiler_t *compiler, const char *source, program_t *program)
@@ -195,7 +197,7 @@ compiler_error_t compiler_run(compiler_t *compiler, const char *source, program_
     if ((error = expression(compiler, PREC_ASSIGNMENT)) != 0)
         return error;
 
-    if ((error = compiler_consume(compiler, TOKEN_EOF)) != 0)
+    if ((error = consume(compiler, TOKEN_EOF)) != 0)
         return error;
 
     program_write(compiler->program, OP_RETURN);

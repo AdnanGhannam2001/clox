@@ -3,7 +3,7 @@
 void value_stack_init(value_stack_t *stack)
 {
     stack->count = 0;
-    memset(stack->items, 0, CLOX_VALUE_STACK_MAX * sizeof(double));
+    memset(stack->items, 0, CLOX_VALUE_STACK_MAX * sizeof(value_t));
 }
 
 void value_stack_push(value_stack_t *stack, value_t value)
@@ -27,7 +27,12 @@ void value_stack_print(value_stack_t *stack)
     printf("[ ");
     for (size_t i = 0; i < stack->count; ++i)
     {
-        printf("%g ", stack->items[i]);
+        switch(stack->items[i].type)
+        {
+            case VAL_BOOL:   { printf("%s ", AS_BOOL(stack->items[i]) ? "true" : "false"); } break;
+            case VAL_NIL:    { printf("nil "); } break;
+            case VAL_NUMBER: { printf("%g ", AS_NUMBER(stack->items[i])); } break;
+        }
     }
     printf("]\n");
 }

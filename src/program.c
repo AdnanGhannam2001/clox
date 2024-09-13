@@ -27,8 +27,8 @@ int program_write(program_t *program, op_code_t value, ...)
                 fprintf(stderr, "Too many constants, max is: %d\n", UINT8_MAX);
                 return -1;
             }
-            // TODO make an assertion on the number of args
-            value_array_write(&program->constants, va_arg(args, value_t));
+
+            value_array_write(&program->constants, NUMBER_VAL(va_arg(args, double)));
             chunk_array_write(&program->chunks, (uint8_t)program->constants.count - 1);
         } break;
     default: {}
@@ -62,7 +62,19 @@ void program_instruction_disassemble(program_t *program, size_t *i)
     case OP_CONSTANT:
         {
             printf("OP_CONSTANT\t");
-            printf("%g\n", program->constants.items[program->chunks.items[++(*i)]]);
+            printf("%g\n", AS_NUMBER(program->constants.items[program->chunks.items[++(*i)]]));
+        } break;
+    case OP_NIL:
+        {
+            printf("OP_ADD\n");
+        } break;
+    case OP_TRUE:
+        {
+            printf("OP_ADD\n");
+        } break;
+    case OP_FALSE:
+        {
+            printf("OP_ADD\n");
         } break;
     case OP_ADD:
         {
@@ -83,6 +95,10 @@ void program_instruction_disassemble(program_t *program, size_t *i)
     case OP_NEGATE:
         {
             printf("OP_NEGATE\n");
+        } break;
+    case OP_NOT:
+        {
+            printf("OP_NOT\n");
         } break;
     case OP_RETURN:
         {

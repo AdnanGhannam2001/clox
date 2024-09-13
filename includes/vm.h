@@ -13,6 +13,7 @@ typedef struct vm
 } vm_t;
 
 void vm_init(vm_t *);
+void vm_error(vm_t *vm, const char *fmt, ...);
 interpret_result_t vm_interpret(vm_t *, program_t *program);
 void vm_free(vm_t *);
 

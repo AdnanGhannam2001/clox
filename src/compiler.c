@@ -1,7 +1,7 @@
 #include "compiler.h"
 
 static compiler_error_t expression(compiler_t *compiler, precedence_t precedence);
-static compiler_error_t number(compiler_t *compiler);
+static compiler_error_t literal(compiler_t *compiler);
 static compiler_error_t unary(compiler_t *compiler);
 static compiler_error_t binary(compiler_t *compiler);
 static compiler_error_t grouping(compiler_t *compiler);
@@ -31,21 +31,21 @@ static const rule_t rules[] =
   [TOKEN_LESS_EQUAL]    = {NULL,     binary, PREC_COMPARISON},
   [TOKEN_IDENTIFIER]    = {/*variable*/NULL, NULL,   PREC_NONE},
   [TOKEN_STRING]        = {/*string*/NULL,   NULL,   PREC_NONE},
-  [TOKEN_NUMBER]        = {number,   NULL,   PREC_NONE},
+  [TOKEN_NUMBER]        = {literal,   NULL,   PREC_NONE},
   [TOKEN_AND]           = {NULL,     /*and_*/NULL,   PREC_AND},
   [TOKEN_CLASS]         = {NULL,     NULL,   PREC_NONE},
   [TOKEN_ELSE]          = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_FALSE]         = {/*literal*/NULL,  NULL,   PREC_NONE},
+  [TOKEN_FALSE]         = {literal,  NULL,   PREC_NONE},
   [TOKEN_FOR]           = {NULL,     NULL,   PREC_NONE},
   [TOKEN_FUN]           = {NULL,     NULL,   PREC_NONE},
   [TOKEN_IF]            = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_NIL]           = {/*literal*/NULL,  NULL,   PREC_NONE},
+  [TOKEN_NIL]           = {literal,  NULL,   PREC_NONE},
   [TOKEN_OR]            = {NULL,     /*or_*/NULL,    PREC_OR},
   [TOKEN_PRINT]         = {NULL,     NULL,   PREC_NONE},
   [TOKEN_RETURN]        = {NULL,     NULL,   PREC_NONE},
   [TOKEN_SUPER]         = {/*super_*/NULL,   NULL,   PREC_NONE},
   [TOKEN_THIS]          = {/*this_*/NULL,    NULL,   PREC_NONE},
-  [TOKEN_TRUE]          = {/*literal*/NULL,  NULL,   PREC_NONE},
+  [TOKEN_TRUE]          = {literal,  NULL,   PREC_NONE},
   [TOKEN_VAR]           = {NULL,     NULL,   PREC_NONE},
   [TOKEN_WHILE]         = {NULL,     NULL,   PREC_NONE},
   [TOKEN_ERROR]         = {NULL,     NULL,   PREC_NONE},
@@ -69,7 +69,8 @@ static compiler_error_t expression(compiler_t *compiler, precedence_t precedence
     if ((error = prefix(compiler) != 0))
         goto out;
 
-    while (precedence < rules[compiler->curr.type].precedence)
+    printf("%d < %d\n", precedence, rules[compiler->curr.type].precedence);
+    while (precedence <= rules[compiler->curr.type].precedence)
     {
         advance(compiler);
         if ((error = rules[compiler->prev.type].infix(compiler)) != 0)
@@ -80,11 +81,32 @@ out:
     return error;
 }
 
-static compiler_error_t number(compiler_t *compiler)
+static compiler_error_t literal(compiler_t *compiler)
 {
-    if (program_write(compiler->program, OP_CONSTANT, strtod(compiler->prev.start, NULL)) < 0)
+    switch(compiler->prev.type)
     {
-        return COMPILER_ERROR_OUT_OF_MEMORY;
+        case TOKEN_NUMBER:
+            {
+                if (program_write(compiler->program, OP_CONSTANT, strtod(compiler->prev.start, NULL)) < 0)
+                    return COMPILER_ERROR_OUT_OF_MEMORY;
+            } break;
+        case TOKEN_NIL:
+            {
+                if (program_write(compiler->program, OP_NIL))
+                    return COMPILER_ERROR_OUT_OF_MEMORY;
+            } break;
+        case TOKEN_TRUE:
+            {
+                if (program_write(compiler->program, OP_TRUE))
+                    return COMPILER_ERROR_OUT_OF_MEMORY;
+            } break;
+        case TOKEN_FALSE:
+            {
+                if (program_write(compiler->program, OP_FALSE))
+                    return COMPILER_ERROR_OUT_OF_MEMORY;
+            } break;
+        default:
+            UNREACHABLE;
     }
 
     return COMPILER_ERROR_NONE;
@@ -93,7 +115,6 @@ static compiler_error_t number(compiler_t *compiler)
 static compiler_error_t unary(compiler_t *compiler)
 {
     compiler_error_t error;
-
     token_type_t op = compiler->prev.type;
 
     if ((error = expression(compiler, PREC_UNARY)) != 0)
@@ -101,20 +122,18 @@ static compiler_error_t unary(compiler_t *compiler)
 
     switch (op)
     {
-        case TOKEN_MINUS: 
-            {
-                program_write(compiler->program, OP_NEGATE);
-                return COMPILER_ERROR_NONE;
-            }
+        case TOKEN_MINUS: { program_write(compiler->program, OP_NEGATE); } break;
+        case TOKEN_BANG:  { program_write(compiler->program, OP_NOT); } break;
         default:
             UNREACHABLE;
     }
+
+    return COMPILER_ERROR_NONE;
 }
 
 static compiler_error_t binary(compiler_t *compiler)
 {
     compiler_error_t error;
-
     token_type_t op = compiler->prev.type;
 
     rule_t rule = rules[op];
@@ -123,38 +142,44 @@ static compiler_error_t binary(compiler_t *compiler)
 
     switch (op)
     {
-        case TOKEN_PLUS: 
+        case TOKEN_PLUS:  { program_write(compiler->program, OP_ADD); } break;
+        case TOKEN_MINUS: { program_write(compiler->program, OP_SUB); } break;
+        case TOKEN_STAR:  { program_write(compiler->program, OP_MULTI); } break;
+        case TOKEN_SLASH: { program_write(compiler->program, OP_DIV); } break;
+
+        case TOKEN_EQUAL_EQUAL: { program_write(compiler->program, OP_EQUAL); } break;
+        case TOKEN_GREATER:     { program_write(compiler->program, OP_GREATER); } break;
+        case TOKEN_LESS:        { program_write(compiler->program, OP_LESS); } break;
+        case TOKEN_BANG_EQUAL:
             {
-                program_write(compiler->program, OP_ADD);
-                return COMPILER_ERROR_NONE;
-            }
-        case TOKEN_MINUS: 
+                program_write(compiler->program, OP_EQUAL);
+                program_write(compiler->program, OP_NOT);
+            } break;
+        case TOKEN_GREATER_EQUAL:
             {
-                program_write(compiler->program, OP_SUB);
-                return COMPILER_ERROR_NONE;
-            }
-        case TOKEN_STAR: 
+                program_write(compiler->program, OP_GREATER);
+                program_write(compiler->program, OP_NOT);
+            } break;
+        case TOKEN_LESS_EQUAL:
             {
-                program_write(compiler->program, OP_MULTI);
-                return COMPILER_ERROR_NONE;
-            }
-        case TOKEN_SLASH: 
-            {
-                program_write(compiler->program, OP_DIV);
-                return COMPILER_ERROR_NONE;
-            }
+                program_write(compiler->program, OP_LESS);
+                program_write(compiler->program, OP_NOT);
+            } break;
+
         default:
             UNREACHABLE;
     }
+
+    return COMPILER_ERROR_NONE;
 }
 
 static compiler_error_t grouping(compiler_t *compiler)
 {
     compiler_error_t error;
-    if ((error = expression(compiler, PREC_CALL)) != 0)
+    if ((error = expression(compiler, PREC_ASSIGNMENT)) != 0)
         return error;
 
-    if ((error = consume(compiler, TOKEN_EOF)) != 0)
+    if ((error = consume(compiler, TOKEN_RIGHT_PAREN)) != 0)
         return error;
 
     return COMPILER_ERROR_NONE;

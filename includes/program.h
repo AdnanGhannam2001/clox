@@ -9,10 +9,17 @@
 typedef enum op_code
 {
     OP_CONSTANT,
+    OP_NIL,
+    OP_TRUE,
+    OP_FALSE,
+    OP_EQUAL,
+    OP_GREATER,
+    OP_LESS,
     OP_ADD,
     OP_SUB,
     OP_MULTI,
     OP_DIV,
+    OP_NOT,
     OP_NEGATE,
     OP_RETURN,
 
@@ -22,7 +29,6 @@ typedef enum op_code
 ARRAY(chunk_array, uint8_t)
 
 // ValueArray
-typedef double value_t;
 ARRAY(value_array, value_t)
 
 typedef struct program

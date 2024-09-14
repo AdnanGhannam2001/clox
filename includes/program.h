@@ -3,6 +3,7 @@
 
 #include <stdarg.h>
 #include "common.h"
+#include "value.h"
 #include "array.h"
 #include "object.h"
 

@@ -40,10 +40,6 @@ static interpret_result_t vm_run(vm_t *vm)
         switch(instruction)
         {
             case OP_CONSTANT:
-                {
-                    value_t value = READ_CONSTANT(vm);
-                    value_stack_push(&vm->stack, value);
-                } break;
             case OP_STRING:
                 {
                     value_t value = READ_CONSTANT(vm);
@@ -53,7 +49,19 @@ static interpret_result_t vm_run(vm_t *vm)
             case OP_TRUE:  { value_stack_push(&vm->stack, BOOL_VAL(true)); } break;
             case OP_FALSE: { value_stack_push(&vm->stack, BOOL_VAL(false)); } break;
 
-            case OP_ADD:   { BINARY_OP(vm, NUMBER_VAL, +); } break;
+            case OP_ADD:
+                {
+                    value_t right = value_stack_pop(&vm->stack);
+                    value_t left = value_stack_pop(&vm->stack);
+
+                    if (!value_addable(right, left))
+                    {
+                        vm_error(vm, "Values can't be added");
+                        return INTERPRET_RESULT_RUNTIME_ERROR;
+                    }
+
+                    value_stack_push(&vm->stack, value_add(right, left));
+                } break;
             case OP_SUB:   { BINARY_OP(vm, NUMBER_VAL, -); } break;
             case OP_MULTI: { BINARY_OP(vm, NUMBER_VAL, *); } break;
             case OP_DIV:   { BINARY_OP(vm, NUMBER_VAL, /); } break;
@@ -65,31 +73,14 @@ static interpret_result_t vm_run(vm_t *vm)
                     value_t right = value_stack_pop(&vm->stack);
                     value_t left = value_stack_pop(&vm->stack);
 
-                    if (right.type == VAL_NIL || left.type == VAL_NIL)
-                    {
-                        value_stack_push(&vm->stack, BOOL_VAL(right.type == VAL_NIL && left.type == VAL_NIL));
-                        break;
-                    }
-
-                    if (right.type != left.type)
+                    cmp_t cmp;
+                    if ((cmp = value_cmp(right, left)) == CMP_ERROR)
                     {
                         vm_error(vm, "Can't compare two different types");
                         return INTERPRET_RESULT_RUNTIME_ERROR;
                     }
 
-                    switch(right.type)
-                    {
-                        case VAL_BOOL:
-                            {
-                                value_stack_push(&vm->stack, BOOL_VAL(AS_BOOL(right) == AS_BOOL(left)));
-                            } break;
-                        case VAL_NUMBER:
-                            {
-                                value_stack_push(&vm->stack, BOOL_VAL(AS_BOOL(right) == AS_BOOL(left)));
-                            } break;
-                        default:
-                            UNREACHABLE;
-                    }
+                    value_stack_push(&vm->stack, BOOL_VAL(cmp == CMP_EQUAL ? true : false));
                 } break;
 
             case OP_NEGATE:

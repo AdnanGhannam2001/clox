@@ -3,7 +3,7 @@
 
 #include "common.h"
 #include "program.h"
-#include "value_stack.h"
+#include "value.h"
 
 typedef struct vm
 {

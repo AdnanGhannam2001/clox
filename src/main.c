@@ -104,7 +104,7 @@ int main(int argc, const char *argv[])
         char *content = NULL;
         if ((ret = read_file(argv[1], &content)) == 0)
         {
-            ret = from_file(content);
+            ret = (int)from_file(content);
         }
 
         free(content);

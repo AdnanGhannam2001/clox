@@ -13,7 +13,7 @@ int program_write(program_t *program, op_code_t value, ...)
 {
     assert(value < OP_COUNT);
 
-    chunk_array_write(&program->chunks, value);
+    chunk_array_write(&program->chunks, (uint8_t)value);
 
     va_list args;
     va_start(args, value);

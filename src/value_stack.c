@@ -32,6 +32,12 @@ void value_stack_print(value_stack_t *stack)
             case VAL_BOOL:   { printf("%s ", AS_BOOL(stack->items[i]) ? "true" : "false"); } break;
             case VAL_NIL:    { printf("nil "); } break;
             case VAL_NUMBER: { printf("%g ", AS_NUMBER(stack->items[i])); } break;
+            case VAL_OBJECT:
+            {
+                object_print(AS_OBJECT(stack->items[i]));
+            } break;
+            default:
+                UNREACHABLE;
         }
     }
     printf("]\n");

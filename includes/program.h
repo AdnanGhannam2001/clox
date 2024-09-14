@@ -4,11 +4,13 @@
 #include <stdarg.h>
 #include "common.h"
 #include "array.h"
+#include "object.h"
 
 // ChunkArray
 typedef enum op_code
 {
-    OP_CONSTANT,
+    OP_CONSTANT, // TODO: Rename to OP_CONSTANT_NUMBER
+    OP_STRING,   // TODO: Rename to OP_CONSTANT_STRING
     OP_NIL,
     OP_TRUE,
     OP_FALSE,

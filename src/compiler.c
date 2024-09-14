@@ -5,6 +5,7 @@ static compiler_error_t literal(compiler_t *compiler);
 static compiler_error_t unary(compiler_t *compiler);
 static compiler_error_t binary(compiler_t *compiler);
 static compiler_error_t grouping(compiler_t *compiler);
+static compiler_error_t string(compiler_t *compiler);
 static void advance(compiler_t *);
 static compiler_error_t consume(compiler_t *, const token_type_t);
 
@@ -30,7 +31,7 @@ static const rule_t rules[] =
   [TOKEN_LESS]          = {NULL,     binary, PREC_COMPARISON},
   [TOKEN_LESS_EQUAL]    = {NULL,     binary, PREC_COMPARISON},
   [TOKEN_IDENTIFIER]    = {/*variable*/NULL, NULL,   PREC_NONE},
-  [TOKEN_STRING]        = {/*string*/NULL,   NULL,   PREC_NONE},
+  [TOKEN_STRING]        = {string,   NULL,   PREC_NONE},
   [TOKEN_NUMBER]        = {literal,   NULL,   PREC_NONE},
   [TOKEN_AND]           = {NULL,     /*and_*/NULL,   PREC_AND},
   [TOKEN_CLASS]         = {NULL,     NULL,   PREC_NONE},
@@ -181,6 +182,14 @@ static compiler_error_t grouping(compiler_t *compiler)
     if ((error = consume(compiler, TOKEN_RIGHT_PAREN)) != 0)
         return error;
 
+    return COMPILER_ERROR_NONE;
+}
+
+static compiler_error_t string(compiler_t *compiler)
+{
+    program_write(compiler->program,
+        OP_STRING,
+        object_string_new(compiler->prev.start + 1, compiler->prev.length - 2));
     return COMPILER_ERROR_NONE;
 }
 

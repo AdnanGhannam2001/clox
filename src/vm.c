@@ -44,6 +44,11 @@ static interpret_result_t vm_run(vm_t *vm)
                     value_t value = READ_CONSTANT(vm);
                     value_stack_push(&vm->stack, value);
                 } break;
+            case OP_STRING:
+                {
+                    value_t value = READ_CONSTANT(vm);
+                    value_stack_push(&vm->stack, value);
+                } break;
             case OP_NIL:   { value_stack_push(&vm->stack, NIL_VAL); } break;
             case OP_TRUE:  { value_stack_push(&vm->stack, BOOL_VAL(true)); } break;
             case OP_FALSE: { value_stack_push(&vm->stack, BOOL_VAL(false)); } break;

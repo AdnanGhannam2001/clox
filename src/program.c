@@ -31,6 +31,17 @@ int program_write(program_t *program, op_code_t value, ...)
             value_array_write(&program->constants, NUMBER_VAL(va_arg(args, double)));
             chunk_array_write(&program->chunks, (uint8_t)program->constants.count - 1);
         } break;
+    case OP_STRING:
+        {
+            if (program->constants.count > UINT8_MAX)
+            {
+                fprintf(stderr, "Too many constants, max is: %d\n", UINT8_MAX);
+                return -1;
+            }
+
+            value_array_write(&program->constants, OBJECT_VAL(va_arg(args, object_t*)));
+            chunk_array_write(&program->chunks, (uint8_t)program->constants.count - 1);
+        } break;
     default: {}
     }
 
@@ -63,6 +74,12 @@ void program_instruction_disassemble(program_t *program, size_t *i)
         {
             printf("OP_CONSTANT\t");
             printf("%g\n", AS_NUMBER(program->constants.items[program->chunks.items[++(*i)]]));
+        } break;
+    case OP_STRING:
+        {
+            printf("OP_STRING\t");
+            object_print(AS_OBJECT(program->constants.items[program->chunks.items[++(*i)]]));
+            printf("\n");
         } break;
     case OP_NIL:
         {

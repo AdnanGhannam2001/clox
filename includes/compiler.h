@@ -2,8 +2,9 @@
 #define CLOX_COMPILER_H
 
 #include "common.h"
-#include "program.h"
 #include "tokenizer.h"
+#include "program.h"
+#include "object.h"
 
 typedef enum compiler_error
 {

@@ -40,6 +40,22 @@ value_t value_add(value_t a, value_t b)
     }
 }
 
+void value_print(const value_t value)
+{
+    switch(value.type)
+    {
+    case VAL_BOOL:   { printf("%s ", AS_BOOL(value) ? "true" : "false"); } break;
+    case VAL_NIL:    { printf("nil "); } break;
+    case VAL_NUMBER: { printf("%g ", AS_NUMBER(value)); } break;
+    case VAL_OBJECT:
+        {
+            object_print(AS_OBJECT(value));
+        } break;
+    default:
+        UNREACHABLE;
+    }
+}
+
 void value_stack_init(value_stack_t *stack)
 {
     stack->count = 0;
@@ -66,19 +82,6 @@ void value_stack_print(const value_stack_t *stack)
 {
     printf("[ ");
     for (size_t i = 0; i < stack->count; ++i)
-    {
-        switch(stack->items[i].type)
-        {
-        case VAL_BOOL:   { printf("%s ", AS_BOOL(stack->items[i]) ? "true" : "false"); } break;
-        case VAL_NIL:    { printf("nil "); } break;
-        case VAL_NUMBER: { printf("%g ", AS_NUMBER(stack->items[i])); } break;
-        case VAL_OBJECT:
-            {
-                object_print(AS_OBJECT(stack->items[i]));
-            } break;
-        default:
-            UNREACHABLE;
-        }
-    }
+        value_print(stack->items[i]);
     printf("]\n");
 }

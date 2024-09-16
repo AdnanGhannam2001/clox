@@ -5,8 +5,8 @@
 
 typedef enum value_type
 {
-    VAL_BOOL,
     VAL_NIL,
+    VAL_BOOL,
     VAL_NUMBER,
     VAL_OBJECT,
 
@@ -41,6 +41,7 @@ typedef struct value
 cmp_t value_cmp(value_t, value_t);
 bool value_addable(const value_t, const value_t);
 value_t value_add(value_t, value_t);
+void value_print(const value_t);
 
 // ValueStack
 #define CLOX_VALUE_STACK_MAX UINT8_MAX

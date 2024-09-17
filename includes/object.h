@@ -35,5 +35,6 @@ void object_print(const object_t *);
 object_string_t *object_string_new(const char *, const size_t);
 void object_string_destroy(object_string_t *);
 object_string_t *object_string_concat(object_string_t *, object_string_t *);
+bool object_string_cmp(const object_string_t *, const object_string_t *);
 
 #endif // CLOX_OBJECT_H

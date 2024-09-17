@@ -24,7 +24,7 @@ cmp_t object_cmp(const object_t *a, const object_t *b)
         {
             const object_string_t* s1 = (const object_string_t*)a;
             const object_string_t* s2 = (const object_string_t*)b;
-            return s1->length == s2->length && memcmp(s1->data, s2->data, s1->length) == 0
+            return object_string_cmp(s1, s2)
                        ? CMP_EQUAL
                        : CMP_NOT_EQUAL;
         }
@@ -74,4 +74,9 @@ object_string_t *object_string_concat(object_string_t *a, object_string_t *b)
     object_string_destroy(b);
 
     return string;
+}
+
+bool object_string_cmp(const object_string_t *a, const object_string_t *b)
+{
+    return a->length == b->length && memcmp(a->data, b->data, a->length) == 0;
 }

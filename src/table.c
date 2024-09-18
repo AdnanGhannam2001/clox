@@ -119,6 +119,9 @@ void table_print(const table_t *table)
     printf("[\n");
     for (size_t i = 0; i < table->capacity; ++i)
     {
+        if (table->entries[i].key == NULL)
+            continue;
+
         printf("\t%.*s: ", (int)table->entries[i].key->length, table->entries[i].key->data);
         value_print(table->entries[i].value);
         printf("\n");

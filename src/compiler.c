@@ -1,12 +1,20 @@
 #include "compiler.h"
 
-static compiler_error_t expression(compiler_t *compiler, precedence_t precedence);
-static compiler_error_t literal(compiler_t *compiler);
-static compiler_error_t unary(compiler_t *compiler);
-static compiler_error_t binary(compiler_t *compiler);
-static compiler_error_t grouping(compiler_t *compiler);
-static compiler_error_t string(compiler_t *compiler);
+static compiler_error_t declaration(compiler_t *);
+static compiler_error_t var_declaration(compiler_t *);
+static compiler_error_t statement(compiler_t *);
+static compiler_error_t statement_expression(compiler_t *);
+static compiler_error_t expression(compiler_t *, precedence_t);
+
+static compiler_error_t variable(compiler_t *, bool);
+static compiler_error_t string(compiler_t *, bool);
+static compiler_error_t binary(compiler_t *, bool);
+static compiler_error_t unary(compiler_t *, bool);
+static compiler_error_t grouping(compiler_t *, bool);
+static compiler_error_t literal(compiler_t *, bool);
+
 static void advance(compiler_t *);
+static bool consume_if(compiler_t *, const token_type_t);
 static compiler_error_t consume(compiler_t *, const token_type_t);
 
 static const rule_t rules[] =
@@ -30,7 +38,7 @@ static const rule_t rules[] =
   [TOKEN_GREATER_EQUAL] = {NULL,     binary, PREC_COMPARISON},
   [TOKEN_LESS]          = {NULL,     binary, PREC_COMPARISON},
   [TOKEN_LESS_EQUAL]    = {NULL,     binary, PREC_COMPARISON},
-  [TOKEN_IDENTIFIER]    = {/*variable*/NULL, NULL,   PREC_NONE},
+  [TOKEN_IDENTIFIER]    = {variable, NULL,   PREC_NONE},
   [TOKEN_STRING]        = {string,   NULL,   PREC_NONE},
   [TOKEN_NUMBER]        = {literal,   NULL,   PREC_NONE},
   [TOKEN_AND]           = {NULL,     /*and_*/NULL,   PREC_AND},
@@ -53,9 +61,70 @@ static const rule_t rules[] =
   [TOKEN_EOF]           = {NULL,     NULL,   PREC_NONE},
 };
 
+static compiler_error_t declaration(compiler_t *compiler)
+{
+    if (consume_if(compiler, TOKEN_VAR))
+        return var_declaration(compiler);
+    
+    return statement(compiler);
+}
+
+static compiler_error_t var_declaration(compiler_t *compiler)
+{
+    compiler_error_t error;
+    if ((error = consume(compiler, TOKEN_IDENTIFIER)) != 0)
+        return error;
+
+    token_t var = compiler->prev;
+
+    if (consume_if(compiler, TOKEN_EQUAL))
+    {
+        if ((error = expression(compiler, PREC_ASSIGNMENT)) != 0)
+            return error;
+    }
+    else
+        program_write(compiler->program, OP_NIL);
+
+    if ((error = consume(compiler, TOKEN_SEMICOLON)) != 0)
+        return error;
+
+    program_write(compiler->program, OP_DEFINE_GLOBAL, OBJECT_VAL(object_string_new(var.start, var.length)));
+
+    return error;
+}
+
+static compiler_error_t statement(compiler_t *compiler)
+{
+    compiler_error_t error;
+    if (consume_if(compiler, TOKEN_PRINT))
+    {
+        error = statement_expression(compiler);
+        program_write(compiler->program, OP_PRINT);
+    }
+    else
+    {
+        error = statement_expression(compiler);
+        program_write(compiler->program, OP_POP);
+    }
+
+    return error;
+}
+
+static compiler_error_t statement_expression(compiler_t *compiler)
+{
+    compiler_error_t error;
+    if ((error = expression(compiler, PREC_ASSIGNMENT)) != 0)
+        return error;
+
+    if ((error = consume(compiler, TOKEN_SEMICOLON)) != 0)
+        return error;
+
+    return error;
+}
+
 static compiler_error_t expression(compiler_t *compiler, precedence_t precedence)
 {
-    compiler_error_t error = COMPILER_ERROR_NONE;
+    compiler_error_t error;
 
     advance(compiler);
     parse_fn prefix = rules[compiler->prev.type].prefix;
@@ -67,71 +136,58 @@ static compiler_error_t expression(compiler_t *compiler, precedence_t precedence
         goto out;
     }
 
-    if ((error = prefix(compiler) != 0))
+    bool can_assign = precedence <= PREC_ASSIGNMENT;
+    if ((error = prefix(compiler, can_assign) != 0))
         goto out;
 
     while (precedence <= rules[compiler->curr.type].precedence)
     {
         advance(compiler);
-        if ((error = rules[compiler->prev.type].infix(compiler)) != 0)
+        if ((error = rules[compiler->prev.type].infix(compiler, can_assign)) != 0)
             goto out;
+    }
+
+    if (can_assign && consume_if(compiler, TOKEN_EQUAL))
+    {
+        compiler_error(compiler, "Invalid assignment");
+        error = COMPILER_ERROR_INVALID_ASSIGNMENT;
     }
 
 out:
     return error;
 }
 
-static compiler_error_t literal(compiler_t *compiler)
-{
-    switch(compiler->prev.type)
-    {
-        case TOKEN_NUMBER:
-            {
-                if (program_write(compiler->program, OP_CONSTANT, strtod(compiler->prev.start, NULL)) < 0)
-                    return COMPILER_ERROR_OUT_OF_MEMORY;
-            } break;
-        case TOKEN_NIL:
-            {
-                if (program_write(compiler->program, OP_NIL))
-                    return COMPILER_ERROR_OUT_OF_MEMORY;
-            } break;
-        case TOKEN_TRUE:
-            {
-                if (program_write(compiler->program, OP_TRUE))
-                    return COMPILER_ERROR_OUT_OF_MEMORY;
-            } break;
-        case TOKEN_FALSE:
-            {
-                if (program_write(compiler->program, OP_FALSE))
-                    return COMPILER_ERROR_OUT_OF_MEMORY;
-            } break;
-        default:
-            UNREACHABLE;
-    }
-
-    return COMPILER_ERROR_NONE;
-}
-
-static compiler_error_t unary(compiler_t *compiler)
+static compiler_error_t variable(compiler_t *compiler, bool can_assign)
 {
     compiler_error_t error;
-    token_type_t op = compiler->prev.type;
+    token_t var = compiler->prev;
 
-    if ((error = expression(compiler, PREC_UNARY)) != 0)
-        return error;
-
-    switch (op)
+    if (can_assign && consume_if(compiler, TOKEN_EQUAL))
     {
-        case TOKEN_MINUS: { program_write(compiler->program, OP_NEGATE); } break;
-        case TOKEN_BANG:  { program_write(compiler->program, OP_NOT); } break;
-        default:
-            UNREACHABLE;
+        if ((error = expression(compiler, PREC_ASSIGNMENT)) != 0)
+            return error;
+
+        program_write(compiler->program,
+                      OP_SET_GLOBAL,
+                      OBJECT_VAL(object_string_new(var.start, var.length)));
     }
+    else
+        program_write(compiler->program,
+                      OP_GET_GLOBAL,
+                      OBJECT_VAL(object_string_new(var.start, var.length)));
 
     return COMPILER_ERROR_NONE;
 }
 
-static compiler_error_t binary(compiler_t *compiler)
+static compiler_error_t string(compiler_t *compiler, bool can_assign __attribute__((unused)))
+{
+    program_write(compiler->program,
+        OP_CONSTANT,
+        OBJECT_VAL(object_string_new(compiler->prev.start + 1, compiler->prev.length - 2)));
+    return COMPILER_ERROR_NONE;
+}
+
+static compiler_error_t binary(compiler_t *compiler, bool can_assign __attribute__((unused)))
 {
     compiler_error_t error;
     token_type_t op = compiler->prev.type;
@@ -173,7 +229,26 @@ static compiler_error_t binary(compiler_t *compiler)
     return COMPILER_ERROR_NONE;
 }
 
-static compiler_error_t grouping(compiler_t *compiler)
+static compiler_error_t unary(compiler_t *compiler, bool can_assign __attribute__((unused)))
+{
+    compiler_error_t error;
+    token_type_t op = compiler->prev.type;
+
+    if ((error = expression(compiler, PREC_UNARY)) != 0)
+        return error;
+
+    switch (op)
+    {
+        case TOKEN_MINUS: { program_write(compiler->program, OP_NEGATE); } break;
+        case TOKEN_BANG:  { program_write(compiler->program, OP_NOT); } break;
+        default:
+            UNREACHABLE;
+    }
+
+    return COMPILER_ERROR_NONE;
+}
+
+static compiler_error_t grouping(compiler_t *compiler, bool can_assign __attribute__((unused)))
 {
     compiler_error_t error;
     if ((error = expression(compiler, PREC_ASSIGNMENT)) != 0)
@@ -185,11 +260,34 @@ static compiler_error_t grouping(compiler_t *compiler)
     return COMPILER_ERROR_NONE;
 }
 
-static compiler_error_t string(compiler_t *compiler)
+static compiler_error_t literal(compiler_t *compiler, bool can_assign __attribute__((unused)))
 {
-    program_write(compiler->program,
-        OP_STRING,
-        object_string_new(compiler->prev.start + 1, compiler->prev.length - 2));
+    switch(compiler->prev.type)
+    {
+        case TOKEN_NUMBER:
+            {
+                if (program_write(compiler->program, OP_CONSTANT, NUMBER_VAL(strtod(compiler->prev.start, NULL))) < 0)
+                    return COMPILER_ERROR_OUT_OF_MEMORY;
+            } break;
+        case TOKEN_NIL:
+            {
+                if (program_write(compiler->program, OP_NIL))
+                    return COMPILER_ERROR_OUT_OF_MEMORY;
+            } break;
+        case TOKEN_TRUE:
+            {
+                if (program_write(compiler->program, OP_TRUE))
+                    return COMPILER_ERROR_OUT_OF_MEMORY;
+            } break;
+        case TOKEN_FALSE:
+            {
+                if (program_write(compiler->program, OP_FALSE))
+                    return COMPILER_ERROR_OUT_OF_MEMORY;
+            } break;
+        default:
+            UNREACHABLE;
+    }
+
     return COMPILER_ERROR_NONE;
 }
 
@@ -199,9 +297,18 @@ static void advance(compiler_t *compiler)
     compiler->curr = tokenizer_next(compiler->tokenizer);
 }
 
-static compiler_error_t consume(compiler_t *compiler, const token_type_t type)
+static bool consume_if(compiler_t *compiler, const token_type_t type)
 {
     if (compiler->curr.type != type)
+        return false;
+
+    advance(compiler);
+    return true;
+}
+
+static compiler_error_t consume(compiler_t *compiler, const token_type_t type)
+{
+    if (!consume_if(compiler, type))
     {
         compiler_error(compiler, "Unexpected token '%s', expected '%s'",
                        tokenizer_token_name(compiler->curr.type),
@@ -209,7 +316,6 @@ static compiler_error_t consume(compiler_t *compiler, const token_type_t type)
         return COMPILER_ERROR_UNEXPECTED_TOKEN;
     }
 
-    advance(compiler);
     return COMPILER_ERROR_NONE;
 }
 
@@ -240,8 +346,11 @@ compiler_error_t compiler_run(compiler_t *compiler, const char *source, program_
 
     compiler_error_t error;
 
-    if ((error = expression(compiler, PREC_ASSIGNMENT)) != 0)
-        return error;
+    while (compiler->curr.type != TOKEN_EOF)
+    {
+        if ((error = declaration(compiler)) != 0)
+            return error;
+    }
 
     if ((error = consume(compiler, TOKEN_EOF)) != 0)
         return error;

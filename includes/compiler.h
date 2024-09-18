@@ -11,6 +11,7 @@ typedef enum compiler_error
     COMPILER_ERROR_NONE,
     COMPILER_ERROR_UNEXPECTED_TOKEN,
     COMPILER_ERROR_EXPRESSION_EXPECTED,
+    COMPILER_ERROR_INVALID_ASSIGNMENT,
     COMPILER_ERROR_OUT_OF_MEMORY,
 
     COMPILER_ERROR_COUNT
@@ -39,7 +40,7 @@ typedef enum precedence
     PREC_PRIMARY
 } precedence_t;
 
-typedef compiler_error_t (*parse_fn)(compiler_t *);
+typedef compiler_error_t (*parse_fn)(compiler_t *, bool);
 
 typedef struct rule
 {

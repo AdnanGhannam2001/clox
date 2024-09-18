@@ -4,12 +4,14 @@
 #include "common.h"
 #include "program.h"
 #include "value.h"
+#include "table.h"
 
 typedef struct vm
 {
     program_t *program;
     uint8_t *ip;
     value_stack_t stack;
+    table_t globals;
 } vm_t;
 
 void vm_init(vm_t *);

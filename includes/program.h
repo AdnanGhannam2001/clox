@@ -10,11 +10,14 @@
 // ChunkArray
 typedef enum op_code
 {
-    OP_CONSTANT, // TODO: Rename to OP_CONSTANT_NUMBER
-    OP_STRING,   // TODO: Rename to OP_CONSTANT_STRING
+    OP_CONSTANT,
     OP_NIL,
     OP_TRUE,
     OP_FALSE,
+    OP_POP,
+    OP_DEFINE_GLOBAL,
+    OP_GET_GLOBAL,
+    OP_SET_GLOBAL,
     OP_EQUAL,
     OP_GREATER,
     OP_LESS,
@@ -24,6 +27,7 @@ typedef enum op_code
     OP_DIV,
     OP_NOT,
     OP_NEGATE,
+    OP_PRINT,
     OP_RETURN,
 
     OP_COUNT

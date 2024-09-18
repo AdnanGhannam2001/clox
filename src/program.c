@@ -21,6 +21,9 @@ int program_write(program_t *program, op_code_t value, ...)
     switch (value)
     {
     case OP_CONSTANT:
+    case OP_DEFINE_GLOBAL:
+    case OP_GET_GLOBAL:
+    case OP_SET_GLOBAL:
         {
             if (program->constants.count > UINT8_MAX)
             {
@@ -28,18 +31,7 @@ int program_write(program_t *program, op_code_t value, ...)
                 return -1;
             }
 
-            value_array_write(&program->constants, NUMBER_VAL(va_arg(args, double)));
-            chunk_array_write(&program->chunks, (uint8_t)program->constants.count - 1);
-        } break;
-    case OP_STRING:
-        {
-            if (program->constants.count > UINT8_MAX)
-            {
-                fprintf(stderr, "Too many constants, max is: %d\n", UINT8_MAX);
-                return -1;
-            }
-
-            value_array_write(&program->constants, OBJECT_VAL(va_arg(args, object_t*)));
+            value_array_write(&program->constants, va_arg(args, value_t));
             chunk_array_write(&program->chunks, (uint8_t)program->constants.count - 1);
         } break;
     default: {}
@@ -73,54 +65,31 @@ void program_instruction_disassemble(program_t *program, size_t *i)
     case OP_CONSTANT:
         {
             printf("OP_CONSTANT\t");
-            printf("%g\n", AS_NUMBER(program->constants.items[program->chunks.items[++(*i)]]));
-        } break;
-    case OP_STRING:
-        {
-            printf("OP_STRING\t");
-            object_print(AS_OBJECT(program->constants.items[program->chunks.items[++(*i)]]));
+            value_print(program->constants.items[program->chunks.items[++(*i)]]);
             printf("\n");
         } break;
-    case OP_NIL:
+    case OP_NIL:           { printf("OP_NIL\n"); } break;
+    case OP_TRUE:          { printf("OP_TRUE\n"); } break;
+    case OP_FALSE:         { printf("OP_FALSE\n"); } break;
+    case OP_POP:           { printf("OP_POP\n"); } break;
+
+    case OP_DEFINE_GLOBAL:
+    case OP_GET_GLOBAL:
+    case OP_SET_GLOBAL:
         {
-            printf("OP_ADD\n");
+            printf("OP_GLOBAL\t");
+            value_print(program->constants.items[program->chunks.items[++(*i)]]);
+            printf("\n");
         } break;
-    case OP_TRUE:
-        {
-            printf("OP_ADD\n");
-        } break;
-    case OP_FALSE:
-        {
-            printf("OP_ADD\n");
-        } break;
-    case OP_ADD:
-        {
-            printf("OP_ADD\n");
-        } break;
-    case OP_SUB:
-        {
-            printf("OP_SUB\n");
-        } break;
-    case OP_MULTI:
-        {
-            printf("OP_MULTI\n");
-        } break;
-    case OP_DIV:
-        {
-            printf("OP_DIV\n");
-        } break;
-    case OP_NEGATE:
-        {
-            printf("OP_NEGATE\n");
-        } break;
-    case OP_NOT:
-        {
-            printf("OP_NOT\n");
-        } break;
-    case OP_RETURN:
-        {
-            printf("OP_RETURN\n");
-        } break;
+
+    case OP_ADD:           { printf("OP_ADD\n"); } break;
+    case OP_SUB:           { printf("OP_SUB\n"); } break;
+    case OP_MULTI:         { printf("OP_MULTI\n"); } break;
+    case OP_DIV:           { printf("OP_DIV\n"); } break;
+    case OP_NOT:           { printf("OP_NOT\n"); } break;
+    case OP_NEGATE:        { printf("OP_NEGATE\n"); } break;
+    case OP_PRINT:         { printf("OP_PRINT\n"); } break;
+    case OP_RETURN:        { printf("OP_RETURN\n"); } break;
     default:
         fprintf(stderr, "Unknown instruction %u\n", program->chunks.items[*i]);
     }

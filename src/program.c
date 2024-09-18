@@ -24,6 +24,8 @@ int program_write(program_t *program, op_code_t value, ...)
     case OP_DEFINE_GLOBAL:
     case OP_GET_GLOBAL:
     case OP_SET_GLOBAL:
+    case OP_GET_LOCAL:
+    case OP_SET_LOCAL:
         {
             if (program->constants.count > UINT8_MAX)
             {
@@ -78,6 +80,14 @@ void program_instruction_disassemble(program_t *program, size_t *i)
     case OP_SET_GLOBAL:
         {
             printf("OP_GLOBAL\t");
+            value_print(program->constants.items[program->chunks.items[++(*i)]]);
+            printf("\n");
+        } break;
+
+    case OP_GET_LOCAL:
+    case OP_SET_LOCAL:
+        {
+            printf("OP_LOCAL\t");
             value_print(program->constants.items[program->chunks.items[++(*i)]]);
             printf("\n");
         } break;

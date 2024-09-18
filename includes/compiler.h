@@ -6,6 +6,10 @@
 #include "program.h"
 #include "object.h"
 
+#ifndef CLOX_LOCALS_MAX
+#define CLOX_LOCALS_MAX (UINT8_MAX + 1)
+#endif // CLOX_LOCALS_MAX
+
 typedef enum compiler_error
 {
     COMPILER_ERROR_NONE,
@@ -17,12 +21,27 @@ typedef enum compiler_error
     COMPILER_ERROR_COUNT
 } compiler_error_t;
 
+typedef struct compiler_local
+{
+    token_t token;
+    size_t depth;
+} compiler_local_t;
+
+typedef struct compiler_locals
+{
+    compiler_local_t items[CLOX_LOCALS_MAX];
+    size_t count;
+    size_t depth;
+} compiler_locals_t;
+
 typedef struct compiler
 {
     tokenizer_t *tokenizer;
     program_t *program;
     token_t curr;
     token_t prev;
+
+    compiler_locals_t locals;
 } compiler_t;
 
 typedef enum precedence

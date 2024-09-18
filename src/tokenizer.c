@@ -157,6 +157,11 @@ const char* tokenizer_token_name(const token_type_t type)
     }
 }
 
+bool tokenizer_token_cmp(const token_t a, const token_t b)
+{
+    return a.length == b.length && strncmp(a.start, b.start, a.length) == 0;
+}
+
 token_t tokenizer_next(tokenizer_t *tokenizer)
 {
     while (true)

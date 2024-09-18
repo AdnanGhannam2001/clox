@@ -78,6 +78,19 @@ static interpret_result_t vm_run(vm_t *vm)
                     table_entry_set(&vm->globals, name, value_stack_top(&vm->stack));
                 } break;
 
+            case OP_GET_LOCAL:
+                {
+                    value_t index_value = READ_CONSTANT(vm);
+                    value_stack_push(&vm->stack, vm->stack.items[(int)AS_NUMBER(index_value)]);
+                } break;
+
+            case OP_SET_LOCAL:
+                {
+                    value_t index_value = READ_CONSTANT(vm);
+                    value_t top = value_stack_pop(&vm->stack);
+                    vm->stack.items[(int)AS_NUMBER(index_value)] = top;
+                } break;
+
             case OP_ADD:
                 {
                     value_t right = value_stack_pop(&vm->stack);

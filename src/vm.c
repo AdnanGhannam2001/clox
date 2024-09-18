@@ -109,9 +109,9 @@ static interpret_result_t vm_run(vm_t *vm)
                 }
         }
 
-#ifdef CLOX_DEBUG
+#ifdef CLOX_DEBUG_PRINT
         value_stack_print(&vm->stack);
-#endif // CLOX_DEBUG
+#endif // CLOX_DEBUG_PRINT
     }
 
 #undef BINARY_OP

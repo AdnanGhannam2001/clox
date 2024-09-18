@@ -18,9 +18,9 @@ static interpret_result_t execute(const char *source)
         program_free(&program);
         return INTERPRET_RESULT_COMPILE_ERROR;
     }
-#if CLOX_DEBUG
+#if CLOX_DEBUG_PRINT
     program_disassemble(&program, "Program");
-#endif // CLOX_DEBUG
+#endif // CLOX_DEBUG_PRINT
 
     vm_interpret(&vm, &program);
     program_free(&program);

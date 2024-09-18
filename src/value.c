@@ -62,6 +62,17 @@ void value_stack_init(value_stack_t *stack)
     memset(stack->items, 0, CLOX_VALUE_STACK_MAX * sizeof(value_t));
 }
 
+value_t value_stack_top(value_stack_t *stack)
+{
+    if (stack->count <= 0)
+    {
+        fprintf(stderr, "ERROR: Stack is empty\n");
+        exit(1);
+    }
+
+    return stack->items[stack->count - 1];
+}
+
 void value_stack_push(value_stack_t *stack, value_t value)
 {
     stack->items[stack->count++] = value;

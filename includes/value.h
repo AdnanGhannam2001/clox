@@ -53,6 +53,7 @@ typedef struct value_stack
 } value_stack_t;
 
 void value_stack_init(value_stack_t *);
+value_t value_stack_top(value_stack_t *);
 void value_stack_push(value_stack_t *, value_t value);
 value_t value_stack_pop(value_stack_t *);
 void value_stack_print(const value_stack_t *);

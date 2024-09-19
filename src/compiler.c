@@ -3,6 +3,7 @@
 static compiler_error_t declaration(compiler_t *);
 static compiler_error_t var_declaration(compiler_t *);
 static compiler_error_t statement(compiler_t *);
+static compiler_error_t statement_if(compiler_t *);
 static compiler_error_t statement_expression(compiler_t *);
 static compiler_error_t block(compiler_t *);
 static compiler_error_t expression(compiler_t *, precedence_t);
@@ -23,6 +24,8 @@ static bool is_global_scope(compiler_t *);
 static void add_local(compiler_t *, token_t);
 static int get_local(compiler_t *, token_t);
 static void remove_local(compiler_t *);
+
+static void patch_jump(compiler_t *, int);
 
 static const rule_t rules[] =
 {
@@ -117,11 +120,45 @@ static compiler_error_t statement(compiler_t *compiler)
             error = block(compiler);
         end_scope(compiler);
     }
+    else if (consume_if(compiler, TOKEN_IF))
+    {
+        error = statement_if(compiler);
+    }
     else
     {
         error = statement_expression(compiler);
         program_write(compiler->program, OP_POP);
     }
+
+    return error;
+}
+
+static compiler_error_t statement_if(compiler_t *compiler)
+{
+    compiler_error_t error = COMPILER_ERROR_NONE;
+
+    if ((error = consume(compiler, TOKEN_LEFT_PAREN)) != 0)
+        return error;
+
+    if ((error = expression(compiler, PREC_ASSIGNMENT)) != 0)
+        return error;
+
+    if ((error = consume(compiler, TOKEN_RIGHT_PAREN)) != 0)
+        return error;
+
+    int if_jump = program_write(compiler->program, OP_JUMP_IF_FALSE);
+
+    if ((error = statement(compiler)) != 0)
+        return error;
+
+    int else_jump = program_write(compiler->program, OP_JUMP);
+    patch_jump(compiler, if_jump);
+    if (consume_if(compiler, TOKEN_ELSE))
+    {
+        if ((error = statement(compiler)) != 0)
+            return error;
+    }
+    patch_jump(compiler, else_jump);
 
     return error;
 }
@@ -404,6 +441,14 @@ static void remove_local(compiler_t *compiler)
 {
     compiler->locals.count--;
     program_write(compiler->program, OP_POP);
+}
+
+static void patch_jump(compiler_t *compiler, int offset)
+{
+    int to = (int)compiler->program->chunks.count - offset - 2;
+
+    compiler->program->chunks.items[offset] = (uint8_t)((to >> 8) & 0xFF);
+    compiler->program->chunks.items[offset + 1] = (uint8_t)(to & 0xFF);
 }
 
 void compiler_init(compiler_t *compiler, tokenizer_t *tokenizer, program_t *program)

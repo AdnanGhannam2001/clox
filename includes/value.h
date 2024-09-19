@@ -38,6 +38,9 @@ typedef struct value
 #define IS_NUMBER(value) ((value).type == VAL_NUMBER)
 #define IS_OBJECT(value) ((value).type == VAL_OBJECT)
 
+#define IS_TRUTHY(value) (IS_BOOL(value) || IS_NIL(value))
+#define AS_TRUTHY(value) (IS_BOOL(value) ? AS_BOOL(value) : false)
+
 cmp_t value_cmp(value_t, value_t);
 bool value_addable(const value_t, const value_t);
 value_t value_add(value_t, value_t);

@@ -128,7 +128,7 @@ static interpret_result_t vm_run(vm_t *vm)
             case OP_NOT:
                 {
                     value_t top = value_stack_pop(&vm->stack);
-                    if (!IS_BOOL(top) && !IS_NIL(top))
+                    if (!IS_TRUTHY(top))
                     {
                         vm_error(vm, "Operand after '!' must be truthy");
                         return INTERPRET_RESULT_RUNTIME_ERROR;
@@ -152,6 +152,27 @@ static interpret_result_t vm_run(vm_t *vm)
                     value_print(top);
                     printf("\n");
                 } break;
+
+            case OP_JUMP_IF_FALSE:
+                {
+                    value_t top = value_stack_pop(&vm->stack);
+                    if (!IS_TRUTHY(top))
+                    {
+                        vm_error(vm, "Condition should be boolean");
+                        return INTERPRET_RESULT_RUNTIME_ERROR;
+                    }
+
+                    if (AS_TRUTHY(top))
+                    {
+                        vm->ip += 2;
+                        break;
+                    }
+                }
+            case OP_JUMP:
+                {
+                    vm->ip += ((READ_INSTRUCTION(vm) << 8) | READ_INSTRUCTION(vm));
+                } break;
+
             case OP_RETURN:
                 {
                     return INTERPRET_RESULT_OK;

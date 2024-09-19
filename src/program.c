@@ -36,6 +36,14 @@ int program_write(program_t *program, op_code_t value, ...)
             value_array_write(&program->constants, va_arg(args, value_t));
             chunk_array_write(&program->chunks, (uint8_t)program->constants.count - 1);
         } break;
+
+    case OP_JUMP:
+    case OP_JUMP_IF_FALSE:
+        {
+            chunk_array_write(&program->chunks, 0u);
+            chunk_array_write(&program->chunks, 0u);
+            return (int)program->chunks.count - 2;
+        }
     default: {}
     }
 
@@ -99,6 +107,14 @@ void program_instruction_disassemble(program_t *program, size_t *i)
     case OP_NOT:           { printf("OP_NOT\n"); } break;
     case OP_NEGATE:        { printf("OP_NEGATE\n"); } break;
     case OP_PRINT:         { printf("OP_PRINT\n"); } break;
+
+    case OP_JUMP:
+    case OP_JUMP_IF_FALSE:
+        {
+            int offset = (program->chunks.items[++(*i)] << 8) | program->chunks.items[++(*i)];
+            printf("OP_JUMP\t %d\n", offset);
+        } break;
+
     case OP_RETURN:        { printf("OP_RETURN\n"); } break;
     default:
         fprintf(stderr, "Unknown instruction %u\n", program->chunks.items[*i]);

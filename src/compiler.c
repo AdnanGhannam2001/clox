@@ -4,6 +4,7 @@ static compiler_error_t declaration(compiler_t *);
 static compiler_error_t var_declaration(compiler_t *);
 static compiler_error_t statement(compiler_t *);
 static compiler_error_t statement_if(compiler_t *);
+static compiler_error_t statement_while(compiler_t *);
 static compiler_error_t statement_expression(compiler_t *);
 static compiler_error_t block(compiler_t *);
 static compiler_error_t expression(compiler_t *, precedence_t);
@@ -25,6 +26,7 @@ static void add_local(compiler_t *, token_t);
 static int get_local(compiler_t *, token_t);
 static void remove_local(compiler_t *);
 
+static void patch_jump_to(compiler_t *, int, int);
 static void patch_jump(compiler_t *, int);
 
 static const rule_t rules[] =
@@ -124,6 +126,10 @@ static compiler_error_t statement(compiler_t *compiler)
     {
         error = statement_if(compiler);
     }
+    else if (consume_if(compiler, TOKEN_WHILE))
+    {
+        error = statement_while(compiler);
+    }
     else
     {
         error = statement_expression(compiler);
@@ -159,6 +165,33 @@ static compiler_error_t statement_if(compiler_t *compiler)
             return error;
     }
     patch_jump(compiler, else_jump);
+
+    return error;
+}
+
+static compiler_error_t statement_while(compiler_t *compiler)
+{
+    compiler_error_t error = COMPILER_ERROR_NONE;
+
+    if ((error = consume(compiler, TOKEN_LEFT_PAREN)) != 0)
+        return error;
+
+    int condition_ptr = (int)compiler->program->chunks.count;
+    if ((error = expression(compiler, PREC_ASSIGNMENT)) != 0)
+        return error;
+
+    if ((error = consume(compiler, TOKEN_RIGHT_PAREN)) != 0)
+        return error;
+
+    int while_jump = program_write(compiler->program, OP_JUMP_IF_FALSE);
+
+    if ((error = statement(compiler)) != 0)
+        return error;
+
+    int repeat_jump = program_write(compiler->program, OP_JUMP);
+    patch_jump_to(compiler, repeat_jump, condition_ptr);
+
+    patch_jump(compiler, while_jump);
 
     return error;
 }
@@ -443,12 +476,15 @@ static void remove_local(compiler_t *compiler)
     program_write(compiler->program, OP_POP);
 }
 
+static void patch_jump_to(compiler_t *compiler, int offset, int to)
+{
+    compiler->program->chunks.items[offset + 0] = (uint8_t)((to >> 8) & 0xFF);
+    compiler->program->chunks.items[offset + 1] = (uint8_t)((to >> 0) & 0xFF);
+}
+
 static void patch_jump(compiler_t *compiler, int offset)
 {
-    int to = (int)compiler->program->chunks.count - offset - 2;
-
-    compiler->program->chunks.items[offset] = (uint8_t)((to >> 8) & 0xFF);
-    compiler->program->chunks.items[offset + 1] = (uint8_t)(to & 0xFF);
+    patch_jump_to(compiler, offset, (int)compiler->program->chunks.count);
 }
 
 void compiler_init(compiler_t *compiler, tokenizer_t *tokenizer, program_t *program)

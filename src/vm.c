@@ -170,7 +170,7 @@ static interpret_result_t vm_run(vm_t *vm)
                 }
             case OP_JUMP:
                 {
-                    vm->ip += ((READ_INSTRUCTION(vm) << 8) | READ_INSTRUCTION(vm));
+                    vm->ip = vm->program->chunks.items + ((READ_INSTRUCTION(vm) << 8) | READ_INSTRUCTION(vm));
                 } break;
 
             case OP_RETURN:

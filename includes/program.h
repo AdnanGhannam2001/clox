@@ -30,8 +30,11 @@ typedef enum op_code
     OP_NOT,
     OP_NEGATE,
     OP_PRINT,
+
+    // Jumping is absolute (not relative)
     OP_JUMP,
     OP_JUMP_IF_FALSE,
+
     OP_RETURN,
 
     OP_COUNT

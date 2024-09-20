@@ -14,6 +14,8 @@ static compiler_error_t binary(compiler_t *, bool);
 static compiler_error_t unary(compiler_t *, bool);
 static compiler_error_t grouping(compiler_t *, bool);
 static compiler_error_t literal(compiler_t *, bool);
+static compiler_error_t and_(compiler_t *, bool);
+static compiler_error_t or_(compiler_t *, bool);
 
 static void advance(compiler_t *);
 static bool consume_if(compiler_t *, const token_type_t);
@@ -53,7 +55,7 @@ static const rule_t rules[] =
   [TOKEN_IDENTIFIER]    = {variable, NULL,   PREC_NONE},
   [TOKEN_STRING]        = {literal,   NULL,   PREC_NONE},
   [TOKEN_NUMBER]        = {literal,   NULL,   PREC_NONE},
-  [TOKEN_AND]           = {NULL,     /*and_*/NULL,   PREC_AND},
+  [TOKEN_AND]           = {NULL,     and_,   PREC_AND},
   [TOKEN_CLASS]         = {NULL,     NULL,   PREC_NONE},
   [TOKEN_ELSE]          = {NULL,     NULL,   PREC_NONE},
   [TOKEN_FALSE]         = {literal,  NULL,   PREC_NONE},
@@ -61,7 +63,7 @@ static const rule_t rules[] =
   [TOKEN_FUN]           = {NULL,     NULL,   PREC_NONE},
   [TOKEN_IF]            = {NULL,     NULL,   PREC_NONE},
   [TOKEN_NIL]           = {literal,  NULL,   PREC_NONE},
-  [TOKEN_OR]            = {NULL,     /*or_*/NULL,    PREC_OR},
+  [TOKEN_OR]            = {NULL,     or_,    PREC_OR},
   [TOKEN_PRINT]         = {NULL,     NULL,   PREC_NONE},
   [TOKEN_RETURN]        = {NULL,     NULL,   PREC_NONE},
   [TOKEN_SUPER]         = {/*super_*/NULL,   NULL,   PREC_NONE},
@@ -159,12 +161,14 @@ static compiler_error_t statement_if(compiler_t *compiler)
 
     int else_jump = program_write(compiler->program, OP_JUMP);
     patch_jump(compiler, if_jump);
+
     if (consume_if(compiler, TOKEN_ELSE))
     {
         if ((error = statement(compiler)) != 0)
             return error;
     }
     patch_jump(compiler, else_jump);
+    program_write(compiler->program, OP_POP);
 
     return error;
 }
@@ -188,10 +192,12 @@ static compiler_error_t statement_while(compiler_t *compiler)
     if ((error = statement(compiler)) != 0)
         return error;
 
+    program_write(compiler->program, OP_POP);
     int repeat_jump = program_write(compiler->program, OP_JUMP);
     patch_jump_to(compiler, repeat_jump, condition_ptr);
 
     patch_jump(compiler, while_jump);
+    program_write(compiler->program, OP_POP);
 
     return error;
 }
@@ -408,6 +414,37 @@ static compiler_error_t literal(compiler_t *compiler, bool can_assign __attribut
     }
 
     return COMPILER_ERROR_NONE;
+}
+
+static compiler_error_t and_(compiler_t *compiler, bool can_assign __attribute__((unused)))
+{
+    compiler_error_t error = COMPILER_ERROR_NONE;
+    int jump = program_write(compiler->program, OP_JUMP_IF_FALSE);
+
+    if ((error = expression(compiler, PREC_ASSIGNMENT)) != 0)
+        return error;
+
+    program_write(compiler->program, OP_POP);
+    patch_jump(compiler, jump);
+
+    return error;
+}
+
+static compiler_error_t or_(compiler_t *compiler, bool can_assign __attribute__((unused)))
+{
+    compiler_error_t error = COMPILER_ERROR_NONE;
+    int jump_if_false = program_write(compiler->program, OP_JUMP_IF_FALSE);
+    int jump = program_write(compiler->program, OP_JUMP);
+
+    patch_jump(compiler, jump_if_false);
+    program_write(compiler->program, OP_POP);
+
+    if ((error = expression(compiler, PREC_ASSIGNMENT)) != 0)
+        return error;
+
+    patch_jump(compiler, jump);
+
+    return error;
 }
 
 static void advance(compiler_t *compiler)

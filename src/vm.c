@@ -155,7 +155,7 @@ static interpret_result_t vm_run(vm_t *vm)
 
             case OP_JUMP_IF_FALSE:
                 {
-                    value_t top = value_stack_pop(&vm->stack);
+                    value_t top = value_stack_top(&vm->stack);
                     if (!IS_TRUTHY(top))
                     {
                         vm_error(vm, "Condition should be boolean");

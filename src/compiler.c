@@ -305,7 +305,7 @@ static compiler_error_t variable(compiler_t *compiler, bool can_assign)
     return COMPILER_ERROR_NONE;
 }
 
-static compiler_error_t binary(compiler_t *compiler, bool can_assign __attribute__((unused)))
+static compiler_error_t binary(compiler_t *compiler, UNUSED bool can_assign)
 {
     compiler_error_t error;
     token_type_t op = compiler->prev.type;
@@ -347,7 +347,7 @@ static compiler_error_t binary(compiler_t *compiler, bool can_assign __attribute
     return COMPILER_ERROR_NONE;
 }
 
-static compiler_error_t unary(compiler_t *compiler, bool can_assign __attribute__((unused)))
+static compiler_error_t unary(compiler_t *compiler, UNUSED bool can_assign)
 {
     compiler_error_t error;
     token_type_t op = compiler->prev.type;
@@ -366,7 +366,7 @@ static compiler_error_t unary(compiler_t *compiler, bool can_assign __attribute_
     return COMPILER_ERROR_NONE;
 }
 
-static compiler_error_t grouping(compiler_t *compiler, bool can_assign __attribute__((unused)))
+static compiler_error_t grouping(compiler_t *compiler, UNUSED bool can_assign)
 {
     compiler_error_t error;
     if ((error = expression(compiler, PREC_ASSIGNMENT)) != 0)
@@ -378,7 +378,7 @@ static compiler_error_t grouping(compiler_t *compiler, bool can_assign __attribu
     return COMPILER_ERROR_NONE;
 }
 
-static compiler_error_t literal(compiler_t *compiler, bool can_assign __attribute__((unused)))
+static compiler_error_t literal(compiler_t *compiler, UNUSED bool can_assign)
 {
     switch(compiler->prev.type)
     {
@@ -416,7 +416,7 @@ static compiler_error_t literal(compiler_t *compiler, bool can_assign __attribut
     return COMPILER_ERROR_NONE;
 }
 
-static compiler_error_t and_(compiler_t *compiler, bool can_assign __attribute__((unused)))
+static compiler_error_t and_(compiler_t *compiler, UNUSED bool can_assign)
 {
     compiler_error_t error = COMPILER_ERROR_NONE;
     int jump = program_write(compiler->program, OP_JUMP_IF_FALSE);
@@ -430,7 +430,7 @@ static compiler_error_t and_(compiler_t *compiler, bool can_assign __attribute__
     return error;
 }
 
-static compiler_error_t or_(compiler_t *compiler, bool can_assign __attribute__((unused)))
+static compiler_error_t or_(compiler_t *compiler, UNUSED bool can_assign)
 {
     compiler_error_t error = COMPILER_ERROR_NONE;
     int jump_if_false = program_write(compiler->program, OP_JUMP_IF_FALSE);

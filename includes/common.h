@@ -12,6 +12,7 @@
 
 #define NOT_IMPLEMENTED assert(0 && "Not Implemented")
 #define UNREACHABLE     assert(0 && "Unreachable")
+#define UNUSED          __attribute__((unused))
 
 typedef struct object object_t;
 typedef struct object_string object_string_t;

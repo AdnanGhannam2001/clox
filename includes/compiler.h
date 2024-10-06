@@ -10,6 +10,10 @@
 #define CLOX_LOCALS_MAX (UINT8_MAX + 1)
 #endif // CLOX_LOCALS_MAX
 
+#ifndef CLOX_MAIN_FN
+#define CLOX_MAIN_FN "main"
+#endif // CLOX_MAIN_FN
+
 typedef enum compiler_error
 {
     COMPILER_ERROR_NONE,
@@ -37,7 +41,7 @@ typedef struct compiler_locals
 typedef struct compiler
 {
     tokenizer_t *tokenizer;
-    program_t *program;
+    object_function_t *function;
     token_t curr;
     token_t prev;
 

@@ -42,6 +42,11 @@ void object_print(const object_t *object)
             const object_string_t *string = (const object_string_t *)object;
             printf("'%.*s' ", (int)string->length, string->data);
         } break;
+    case OBJECT_FUNCTION:
+        {
+            const object_function_t *function = (const object_function_t *)object;
+            printf("<fn '%.*s'> ", (int)function->name->length, function->name->data);
+        } break;
     default:
         UNREACHABLE;
     }
@@ -79,4 +84,21 @@ object_string_t *object_string_concat(object_string_t *a, object_string_t *b)
 bool object_string_cmp(const object_string_t *a, const object_string_t *b)
 {
     return a->length == b->length && memcmp(a->data, b->data, a->length) == 0;
+}
+
+object_function_t *object_function_new(const char *name, const size_t arity, program_t *program)
+{
+    object_function_t *function = (object_function_t *)object_new(OBJECT_STRING, sizeof(object_function_t));
+    function->name = object_string_new(name, strlen(name));
+    function->arity = arity;
+    function->program = program;
+
+    return function;
+}
+
+void object_function_destroy(object_function_t *function)
+{
+    program_free(function->program);
+    object_string_destroy(function->name);
+    object_destroy((object_t *)function);
 }

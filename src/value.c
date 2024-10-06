@@ -1,5 +1,5 @@
 #include "value.h"
-#include "program.h"
+#include "object.h"
 
 cmp_t value_cmp(value_t a, value_t b)
 {

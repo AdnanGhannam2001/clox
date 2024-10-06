@@ -5,7 +5,6 @@
 #include "common.h"
 #include "value.h"
 #include "array.h"
-#include "object.h"
 
 // ChunkArray
 typedef enum op_code

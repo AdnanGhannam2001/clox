@@ -1,5 +1,7 @@
 #include "compiler.h"
 
+static program_t *executing_program(compiler_t *);
+
 static compiler_error_t declaration(compiler_t *);
 static compiler_error_t var_declaration(compiler_t *);
 static compiler_error_t statement(compiler_t *);
@@ -75,6 +77,11 @@ static const rule_t rules[] =
   [TOKEN_EOF]           = {NULL,     NULL,   PREC_NONE},
 };
 
+static program_t *executing_program(compiler_t *compiler)
+{
+    return compiler->function->program;
+}
+
 static compiler_error_t declaration(compiler_t *compiler)
 {
     if (consume_if(compiler, TOKEN_VAR))
@@ -97,13 +104,13 @@ static compiler_error_t var_declaration(compiler_t *compiler)
             return error;
     }
     else
-        program_write(compiler->program, OP_NIL);
+        program_write(executing_program(compiler), OP_NIL);
 
     if ((error = consume(compiler, TOKEN_SEMICOLON)) != 0)
         return error;
 
     if (is_global_scope(compiler))
-        program_write(compiler->program, OP_DEFINE_GLOBAL, OBJECT_VAL(object_string_new(var.start, var.length)));
+        program_write(executing_program(compiler), OP_DEFINE_GLOBAL, OBJECT_VAL(object_string_new(var.start, var.length)));
     else
         add_local(compiler, var);
 
@@ -116,7 +123,7 @@ static compiler_error_t statement(compiler_t *compiler)
     if (consume_if(compiler, TOKEN_PRINT))
     {
         error = statement_expression(compiler);
-        program_write(compiler->program, OP_PRINT);
+        program_write(executing_program(compiler), OP_PRINT);
     }
     else if (consume_if(compiler, TOKEN_LEFT_BRACE))
     {
@@ -135,7 +142,7 @@ static compiler_error_t statement(compiler_t *compiler)
     else
     {
         error = statement_expression(compiler);
-        program_write(compiler->program, OP_POP);
+        program_write(executing_program(compiler), OP_POP);
     }
 
     return error;
@@ -154,12 +161,12 @@ static compiler_error_t statement_if(compiler_t *compiler)
     if ((error = consume(compiler, TOKEN_RIGHT_PAREN)) != 0)
         return error;
 
-    int if_jump = program_write(compiler->program, OP_JUMP_IF_FALSE);
+    int if_jump = program_write(executing_program(compiler), OP_JUMP_IF_FALSE);
 
     if ((error = statement(compiler)) != 0)
         return error;
 
-    int else_jump = program_write(compiler->program, OP_JUMP);
+    int else_jump = program_write(executing_program(compiler), OP_JUMP);
     patch_jump(compiler, if_jump);
 
     if (consume_if(compiler, TOKEN_ELSE))
@@ -168,7 +175,7 @@ static compiler_error_t statement_if(compiler_t *compiler)
             return error;
     }
     patch_jump(compiler, else_jump);
-    program_write(compiler->program, OP_POP);
+    program_write(executing_program(compiler), OP_POP);
 
     return error;
 }
@@ -180,24 +187,24 @@ static compiler_error_t statement_while(compiler_t *compiler)
     if ((error = consume(compiler, TOKEN_LEFT_PAREN)) != 0)
         return error;
 
-    int condition_ptr = (int)compiler->program->chunks.count;
+    int condition_ptr = (int)executing_program(compiler)->chunks.count;
     if ((error = expression(compiler, PREC_ASSIGNMENT)) != 0)
         return error;
 
     if ((error = consume(compiler, TOKEN_RIGHT_PAREN)) != 0)
         return error;
 
-    int while_jump = program_write(compiler->program, OP_JUMP_IF_FALSE);
+    int while_jump = program_write(executing_program(compiler), OP_JUMP_IF_FALSE);
 
     if ((error = statement(compiler)) != 0)
         return error;
 
-    program_write(compiler->program, OP_POP);
-    int repeat_jump = program_write(compiler->program, OP_JUMP);
+    program_write(executing_program(compiler), OP_POP);
+    int repeat_jump = program_write(executing_program(compiler), OP_JUMP);
     patch_jump_to(compiler, repeat_jump, condition_ptr);
 
     patch_jump(compiler, while_jump);
-    program_write(compiler->program, OP_POP);
+    program_write(executing_program(compiler), OP_POP);
 
     return error;
 }
@@ -282,22 +289,22 @@ static compiler_error_t variable(compiler_t *compiler, bool can_assign)
             return error;
 
         if (local_index == -1)
-            program_write(compiler->program,
+            program_write(executing_program(compiler),
                           OP_SET_GLOBAL,
                           OBJECT_VAL(object_string_new(var.start, var.length)));
         else
-            program_write(compiler->program,
+            program_write(executing_program(compiler),
                           OP_SET_LOCAL,
                           NUMBER_VAL(local_index));
     }
     else
     {
         if (local_index == -1)
-            program_write(compiler->program,
+            program_write(executing_program(compiler),
                           OP_GET_GLOBAL,
                           OBJECT_VAL(object_string_new(var.start, var.length)));
         else
-            program_write(compiler->program,
+            program_write(executing_program(compiler),
                           OP_GET_LOCAL,
                           NUMBER_VAL(local_index));
     }
@@ -316,28 +323,28 @@ static compiler_error_t binary(compiler_t *compiler, UNUSED bool can_assign)
 
     switch (op)
     {
-        case TOKEN_PLUS:  { program_write(compiler->program, OP_ADD); } break;
-        case TOKEN_MINUS: { program_write(compiler->program, OP_SUB); } break;
-        case TOKEN_STAR:  { program_write(compiler->program, OP_MULTI); } break;
-        case TOKEN_SLASH: { program_write(compiler->program, OP_DIV); } break;
+        case TOKEN_PLUS:  { program_write(executing_program(compiler), OP_ADD); } break;
+        case TOKEN_MINUS: { program_write(executing_program(compiler), OP_SUB); } break;
+        case TOKEN_STAR:  { program_write(executing_program(compiler), OP_MULTI); } break;
+        case TOKEN_SLASH: { program_write(executing_program(compiler), OP_DIV); } break;
 
-        case TOKEN_EQUAL_EQUAL: { program_write(compiler->program, OP_EQUAL); } break;
-        case TOKEN_GREATER:     { program_write(compiler->program, OP_GREATER); } break;
-        case TOKEN_LESS:        { program_write(compiler->program, OP_LESS); } break;
+        case TOKEN_EQUAL_EQUAL: { program_write(executing_program(compiler), OP_EQUAL); } break;
+        case TOKEN_GREATER:     { program_write(executing_program(compiler), OP_GREATER); } break;
+        case TOKEN_LESS:        { program_write(executing_program(compiler), OP_LESS); } break;
         case TOKEN_BANG_EQUAL:
             {
-                program_write(compiler->program, OP_EQUAL);
-                program_write(compiler->program, OP_NOT);
+                program_write(executing_program(compiler), OP_EQUAL);
+                program_write(executing_program(compiler), OP_NOT);
             } break;
         case TOKEN_GREATER_EQUAL:
             {
-                program_write(compiler->program, OP_GREATER);
-                program_write(compiler->program, OP_NOT);
+                program_write(executing_program(compiler), OP_GREATER);
+                program_write(executing_program(compiler), OP_NOT);
             } break;
         case TOKEN_LESS_EQUAL:
             {
-                program_write(compiler->program, OP_LESS);
-                program_write(compiler->program, OP_NOT);
+                program_write(executing_program(compiler), OP_LESS);
+                program_write(executing_program(compiler), OP_NOT);
             } break;
 
         default:
@@ -357,8 +364,8 @@ static compiler_error_t unary(compiler_t *compiler, UNUSED bool can_assign)
 
     switch (op)
     {
-        case TOKEN_MINUS: { program_write(compiler->program, OP_NEGATE); } break;
-        case TOKEN_BANG:  { program_write(compiler->program, OP_NOT); } break;
+        case TOKEN_MINUS: { program_write(executing_program(compiler), OP_NEGATE); } break;
+        case TOKEN_BANG:  { program_write(executing_program(compiler), OP_NOT); } break;
         default:
             UNREACHABLE;
     }
@@ -384,27 +391,27 @@ static compiler_error_t literal(compiler_t *compiler, UNUSED bool can_assign)
     {
         case TOKEN_NUMBER:
             {
-                if (program_write(compiler->program, OP_CONSTANT, NUMBER_VAL(strtod(compiler->prev.start, NULL))) < 0)
+                if (program_write(executing_program(compiler), OP_CONSTANT, NUMBER_VAL(strtod(compiler->prev.start, NULL))) < 0)
                     return COMPILER_ERROR_OUT_OF_MEMORY;
             } break;
         case TOKEN_NIL:
             {
-                if (program_write(compiler->program, OP_NIL))
+                if (program_write(executing_program(compiler), OP_NIL))
                     return COMPILER_ERROR_OUT_OF_MEMORY;
             } break;
         case TOKEN_TRUE:
             {
-                if (program_write(compiler->program, OP_TRUE))
+                if (program_write(executing_program(compiler), OP_TRUE))
                     return COMPILER_ERROR_OUT_OF_MEMORY;
             } break;
         case TOKEN_FALSE:
             {
-                if (program_write(compiler->program, OP_FALSE))
+                if (program_write(executing_program(compiler), OP_FALSE))
                     return COMPILER_ERROR_OUT_OF_MEMORY;
             } break;
         case TOKEN_STRING:
             {
-                if (program_write(compiler->program,
+                if (program_write(executing_program(compiler),
                                   OP_CONSTANT,
                                   OBJECT_VAL(object_string_new(compiler->prev.start + 1, compiler->prev.length - 2))))
                     return COMPILER_ERROR_OUT_OF_MEMORY;
@@ -419,12 +426,12 @@ static compiler_error_t literal(compiler_t *compiler, UNUSED bool can_assign)
 static compiler_error_t and_(compiler_t *compiler, UNUSED bool can_assign)
 {
     compiler_error_t error = COMPILER_ERROR_NONE;
-    int jump = program_write(compiler->program, OP_JUMP_IF_FALSE);
+    int jump = program_write(executing_program(compiler), OP_JUMP_IF_FALSE);
 
     if ((error = expression(compiler, PREC_ASSIGNMENT)) != 0)
         return error;
 
-    program_write(compiler->program, OP_POP);
+    program_write(executing_program(compiler), OP_POP);
     patch_jump(compiler, jump);
 
     return error;
@@ -433,11 +440,11 @@ static compiler_error_t and_(compiler_t *compiler, UNUSED bool can_assign)
 static compiler_error_t or_(compiler_t *compiler, UNUSED bool can_assign)
 {
     compiler_error_t error = COMPILER_ERROR_NONE;
-    int jump_if_false = program_write(compiler->program, OP_JUMP_IF_FALSE);
-    int jump = program_write(compiler->program, OP_JUMP);
+    int jump_if_false = program_write(executing_program(compiler), OP_JUMP_IF_FALSE);
+    int jump = program_write(executing_program(compiler), OP_JUMP);
 
     patch_jump(compiler, jump_if_false);
-    program_write(compiler->program, OP_POP);
+    program_write(executing_program(compiler), OP_POP);
 
     if ((error = expression(compiler, PREC_ASSIGNMENT)) != 0)
         return error;
@@ -510,24 +517,24 @@ static int get_local(compiler_t *compiler, token_t var)
 static void remove_local(compiler_t *compiler)
 {
     compiler->locals.count--;
-    program_write(compiler->program, OP_POP);
+    program_write(executing_program(compiler), OP_POP);
 }
 
 static void patch_jump_to(compiler_t *compiler, int offset, int to)
 {
-    compiler->program->chunks.items[offset + 0] = (uint8_t)((to >> 8) & 0xFF);
-    compiler->program->chunks.items[offset + 1] = (uint8_t)((to >> 0) & 0xFF);
+    executing_program(compiler)->chunks.items[offset + 0] = (uint8_t)((to >> 8) & 0xFF);
+    executing_program(compiler)->chunks.items[offset + 1] = (uint8_t)((to >> 0) & 0xFF);
 }
 
 static void patch_jump(compiler_t *compiler, int offset)
 {
-    patch_jump_to(compiler, offset, (int)compiler->program->chunks.count);
+    patch_jump_to(compiler, offset, (int)executing_program(compiler)->chunks.count);
 }
 
 void compiler_init(compiler_t *compiler, tokenizer_t *tokenizer, program_t *program)
 {
     compiler->tokenizer = tokenizer;
-    compiler->program = program;
+    compiler->function = object_function_new(CLOX_MAIN_FN, 0, program);
     compiler->curr = tokenizer_next(tokenizer);
     compiler->locals = (compiler_locals_t){0};
 }
@@ -561,7 +568,7 @@ compiler_error_t compiler_run(compiler_t *compiler, const char *source, program_
     if ((error = consume(compiler, TOKEN_EOF)) != 0)
         return error;
 
-    program_write(compiler->program, OP_RETURN);
+    program_write(executing_program(compiler), OP_RETURN);
 
     return COMPILER_ERROR_NONE;
 }

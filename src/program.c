@@ -1,4 +1,5 @@
 #include "program.h"
+#include "object.h"
 
 ARRAY_IMPL(chunk_array, uint8_t)
 ARRAY_IMPL(value_array, value_t)

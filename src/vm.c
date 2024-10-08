@@ -20,9 +20,11 @@ void vm_error(vm_t *vm, const char *fmt, ...)
 
 static interpret_result_t vm_run(vm_t *vm)
 {
-#define READ_INSTRUCTION(vm) (*(vm)->ip++)
-#define READ_CONSTANT(vm) ((vm)->program->constants.items[READ_INSTRUCTION(vm)])
-#define READ_STRING(vm) (AS_STRING(READ_CONSTANT(vm)))
+    call_frame_t *frame = &vm->frames.items[vm->frames.count - 1];
+
+#define READ_INSTRUCTION() (*(frame)->ip++)
+#define READ_CONSTANT() (frame->function->program.constants.items[READ_INSTRUCTION()])
+#define READ_STRING() (AS_STRING(READ_CONSTANT()))
 #define BINARY_OP(vm, cast, op)                                                  \
     do                                                                           \
     {                                                                            \
@@ -38,12 +40,12 @@ static interpret_result_t vm_run(vm_t *vm)
 
     while (true)
     {
-        uint8_t instruction = READ_INSTRUCTION(vm);
+        uint8_t instruction = READ_INSTRUCTION();
         switch(instruction)
         {
             case OP_CONSTANT:
                 {
-                    value_t value = READ_CONSTANT(vm);
+                    value_t value = READ_CONSTANT();
                     value_stack_push(&vm->stack, value);
                 } break;
             case OP_NIL:   { value_stack_push(&vm->stack, NIL_VAL); } break;
@@ -54,12 +56,12 @@ static interpret_result_t vm_run(vm_t *vm)
 
             case OP_DEFINE_GLOBAL:
                 {
-                    object_string_t *name = READ_STRING(vm);
+                    object_string_t *name = READ_STRING();
                     table_entry_set(&vm->globals, name, value_stack_pop(&vm->stack));
                 } break;
             case OP_GET_GLOBAL:
                 {
-                    object_string_t *name = READ_STRING(vm);
+                    object_string_t *name = READ_STRING();
                     if (table_entry_get(&vm->globals, name)->key == NULL)
                     {
                         vm_error(vm, "Used of undefined variable: '%.*s'", (int)name->length, name->data);
@@ -69,7 +71,7 @@ static interpret_result_t vm_run(vm_t *vm)
                 } break;
             case OP_SET_GLOBAL:
                 {
-                    object_string_t *name = READ_STRING(vm);
+                    object_string_t *name = READ_STRING();
                     if (table_entry_get(&vm->globals, name)->key == NULL)
                     {
                         vm_error(vm, "Used of undefined variable: '%.*s'", (int)name->length, name->data);
@@ -80,15 +82,15 @@ static interpret_result_t vm_run(vm_t *vm)
 
             case OP_GET_LOCAL:
                 {
-                    value_t index_value = READ_CONSTANT(vm);
-                    value_stack_push(&vm->stack, vm->stack.items[(int)AS_NUMBER(index_value)]);
+                    value_t index_value = READ_CONSTANT();
+                    value_stack_push(&vm->stack, frame->fp[(int)AS_NUMBER(index_value)]);
                 } break;
 
             case OP_SET_LOCAL:
                 {
-                    value_t index_value = READ_CONSTANT(vm);
+                    value_t index_value = READ_CONSTANT();
                     value_t top = value_stack_pop(&vm->stack);
-                    vm->stack.items[(int)AS_NUMBER(index_value)] = top;
+                    frame->fp[(int)AS_NUMBER(index_value)] = top;
                 } break;
 
             case OP_ADD:
@@ -164,13 +166,13 @@ static interpret_result_t vm_run(vm_t *vm)
 
                     if (AS_TRUTHY(top))
                     {
-                        vm->ip += 2;
+                        frame->ip += 2;
                         break;
                     }
                 }
             case OP_JUMP:
                 {
-                    vm->ip = vm->program->chunks.items + ((READ_INSTRUCTION(vm) << 8) | READ_INSTRUCTION(vm));
+                    frame->ip = frame->function->program.chunks.items + ((READ_INSTRUCTION() << 8) | READ_INSTRUCTION());
                 } break;
 
             case OP_RETURN:
@@ -190,10 +192,13 @@ static interpret_result_t vm_run(vm_t *vm)
 #undef READ_CONSTANT
 }
 
-interpret_result_t vm_interpret(vm_t *vm, program_t *program)
+interpret_result_t vm_interpret(vm_t *vm, object_function_t *function)
 {
-    vm->program = program;
-    vm->ip = program->chunks.items;
+    vm->frames.count = 1;
+    vm->frames.items[0].function = function;
+    vm->frames.items[0].ip = function->program.chunks.items;
+    vm->frames.items[0].fp = vm->stack.items;
+    value_stack_push(&vm->stack, OBJECT_VAL(function));
 
     return vm_run(vm);
 }

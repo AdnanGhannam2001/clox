@@ -88,7 +88,7 @@ bool object_string_cmp(const object_string_t *a, const object_string_t *b)
 
 object_function_t *object_function_new(const char *name, const size_t arity)
 {
-    object_function_t *function = (object_function_t *)object_new(OBJECT_STRING, sizeof(object_function_t));
+    object_function_t *function = (object_function_t *)object_new(OBJECT_FUNCTION, sizeof(object_function_t));
     function->name = object_string_new(name, strlen(name));
     function->arity = arity;
     function->program = (program_t){0};

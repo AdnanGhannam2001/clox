@@ -9,21 +9,16 @@ vm_t vm;
 
 static interpret_result_t execute(const char *source)
 {
-    program_t program;
-    program_init(&program);
-
     compiler_t compiler;
-    if (compiler_run(&compiler, source, &program) != 0)
-    {
-        program_free(&program);
+    if (compiler_run(&compiler, source) != 0)
         return INTERPRET_RESULT_COMPILE_ERROR;
-    }
+
 #if CLOX_DEBUG_PRINT
-    program_disassemble(&program, "Program");
+    program_disassemble(&compiler.function->program, "Main Program");
 #endif // CLOX_DEBUG_PRINT
 
-    vm_interpret(&vm, &program);
-    program_free(&program);
+    vm_interpret(&vm, compiler.function);
+    compiler_free(&compiler);
 
     return INTERPRET_RESULT_OK;
 }

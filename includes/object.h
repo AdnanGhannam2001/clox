@@ -31,7 +31,7 @@ struct object_function
     object_t obj;
     object_string_t *name;
     size_t arity;
-    program_t *program;
+    program_t program;
 };
 
 #define OBJECT_TYPE(value) (AS_OBJECT(value)->type)
@@ -52,7 +52,7 @@ void object_string_destroy(object_string_t *);
 object_string_t *object_string_concat(object_string_t *, object_string_t *);
 bool object_string_cmp(const object_string_t *, const object_string_t *);
 
-object_function_t *object_function_new(const char *, const size_t, program_t *);
+object_function_t *object_function_new(const char *, const size_t);
 void object_function_destroy(object_function_t *);
 
 #endif // CLOX_OBJECT_H

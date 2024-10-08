@@ -72,8 +72,11 @@ typedef struct rule
     precedence_t precedence;
 } rule_t;
 
-void compiler_init(compiler_t *, tokenizer_t *, program_t *);
+void compiler_init(compiler_t *, tokenizer_t *);
+void compiler_free(compiler_t *);
 void compiler_error(compiler_t *, const char *fmt, ...);
-compiler_error_t compiler_run(compiler_t *, const char *, program_t *);
+compiler_error_t compiler_run(compiler_t *, const char *);
 
 #endif // CLOX_COMPILER_H
+
+// TODO: Add a global compiler_error_t so compiler_run can return object_function_t* instead

@@ -79,7 +79,7 @@ static const rule_t rules[] =
 
 static program_t *executing_program(compiler_t *compiler)
 {
-    return compiler->function->program;
+    return &compiler->function->program;
 }
 
 static compiler_error_t declaration(compiler_t *compiler)
@@ -531,12 +531,17 @@ static void patch_jump(compiler_t *compiler, int offset)
     patch_jump_to(compiler, offset, (int)executing_program(compiler)->chunks.count);
 }
 
-void compiler_init(compiler_t *compiler, tokenizer_t *tokenizer, program_t *program)
+void compiler_init(compiler_t *compiler, tokenizer_t *tokenizer)
 {
     compiler->tokenizer = tokenizer;
-    compiler->function = object_function_new(CLOX_MAIN_FN, 0, program);
+    compiler->function = object_function_new(CLOX_MAIN_FN, 0);
     compiler->curr = tokenizer_next(tokenizer);
     compiler->locals = (compiler_locals_t){0};
+}
+
+void compiler_free(compiler_t *compiler)
+{
+    object_function_destroy(compiler->function);
 }
 
 void compiler_error(compiler_t *compiler, const char *fmt, ...)
@@ -551,11 +556,11 @@ void compiler_error(compiler_t *compiler, const char *fmt, ...)
     fputc('\n', stderr);
 }
 
-compiler_error_t compiler_run(compiler_t *compiler, const char *source, program_t *program)
+compiler_error_t compiler_run(compiler_t *compiler, const char *source)
 {
     tokenizer_t tokenizer;
     tokenizer_init(&tokenizer, source);
-    compiler_init(compiler, &tokenizer, program);
+    compiler_init(compiler, &tokenizer);
 
     compiler_error_t error;
 

@@ -38,14 +38,16 @@ typedef struct compiler_locals
     size_t depth;
 } compiler_locals_t;
 
+typedef struct compiler_context
+{
+    object_function_t *function;
+    compiler_locals_t locals;
+} compiler_context_t;
+
 typedef struct compiler
 {
-    tokenizer_t *tokenizer;
-    object_function_t *function;
-    token_t curr;
-    token_t prev;
-
-    compiler_locals_t locals;
+    tokenizer_context_t tokenizer_context;
+    compiler_context_t context;
 } compiler_t;
 
 typedef enum precedence
@@ -76,6 +78,9 @@ void compiler_init(compiler_t *, tokenizer_t *);
 void compiler_free(compiler_t *);
 void compiler_error(compiler_t *, const char *fmt, ...);
 compiler_error_t compiler_run(compiler_t *, const char *);
+
+compiler_context_t compiler_context_new();
+void compiler_context_destroy(compiler_context_t *);
 
 #endif // CLOX_COMPILER_H
 

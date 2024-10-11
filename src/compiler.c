@@ -12,16 +12,18 @@ static compiler_error_t block(compiler_t *);
 static compiler_error_t expression(compiler_t *, precedence_t);
 
 static compiler_error_t variable(compiler_t *, bool);
-static compiler_error_t binary(compiler_t *, bool);
-static compiler_error_t unary(compiler_t *, bool);
-static compiler_error_t grouping(compiler_t *, bool);
-static compiler_error_t literal(compiler_t *, bool);
-static compiler_error_t and_(compiler_t *, bool);
-static compiler_error_t or_(compiler_t *, bool);
+static compiler_error_t binary(compiler_t *, UNUSED bool);
+static compiler_error_t unary(compiler_t *, UNUSED bool);
+static compiler_error_t grouping(compiler_t *, UNUSED bool);
+static compiler_error_t literal(compiler_t *, UNUSED bool);
+static compiler_error_t and_(compiler_t *, UNUSED bool);
+static compiler_error_t or_(compiler_t *, UNUSED bool);
 
 static void advance(compiler_t *);
 static bool consume_if(compiler_t *, const token_type_t);
 static compiler_error_t consume(compiler_t *, const token_type_t);
+static inline token_t curr_token(compiler_t *);
+static inline token_t prev_token(compiler_t *);
 
 static void begin_scope(compiler_t *);
 static void end_scope(compiler_t *);
@@ -79,7 +81,7 @@ static const rule_t rules[] =
 
 static program_t *executing_program(compiler_t *compiler)
 {
-    return &compiler->function->program;
+    return &compiler->context.function->program;
 }
 
 static compiler_error_t declaration(compiler_t *compiler)
@@ -96,7 +98,7 @@ static compiler_error_t var_declaration(compiler_t *compiler)
     if ((error = consume(compiler, TOKEN_IDENTIFIER)) != 0)
         return error;
 
-    token_t var = compiler->prev;
+    token_t var = prev_token(compiler);
 
     if (consume_if(compiler, TOKEN_EQUAL))
     {
@@ -225,7 +227,7 @@ static compiler_error_t block(compiler_t *compiler)
 {
     compiler_error_t error = COMPILER_ERROR_NONE;
     bool closed = false;
-    while (!(closed = consume_if(compiler, TOKEN_RIGHT_BRACE)) && compiler->curr.type != TOKEN_EOF)
+    while (!(closed = consume_if(compiler, TOKEN_RIGHT_BRACE)) && curr_token(compiler).type != TOKEN_EOF)
     {
         declaration(compiler);
     }
@@ -233,7 +235,7 @@ static compiler_error_t block(compiler_t *compiler)
     if (!closed)
     {
         compiler_error(compiler, "Unexpected token '%s', expected '%s'",
-                       tokenizer_token_name(compiler->curr.type),
+                       tokenizer_token_name(curr_token(compiler).type),
                        tokenizer_token_name(TOKEN_RIGHT_BRACE));
         error = COMPILER_ERROR_UNEXPECTED_TOKEN;
     }
@@ -246,7 +248,7 @@ static compiler_error_t expression(compiler_t *compiler, precedence_t precedence
     compiler_error_t error;
 
     advance(compiler);
-    parse_fn prefix = rules[compiler->prev.type].prefix;
+    parse_fn prefix = rules[prev_token(compiler).type].prefix;
 
     if (prefix == NULL)
     {
@@ -259,10 +261,10 @@ static compiler_error_t expression(compiler_t *compiler, precedence_t precedence
     if ((error = prefix(compiler, can_assign) != 0))
         goto out;
 
-    while (precedence <= rules[compiler->curr.type].precedence)
+    while (precedence <= rules[curr_token(compiler).type].precedence)
     {
         advance(compiler);
-        if ((error = rules[compiler->prev.type].infix(compiler, can_assign)) != 0)
+        if ((error = rules[prev_token(compiler).type].infix(compiler, can_assign)) != 0)
             goto out;
     }
 
@@ -279,7 +281,7 @@ out:
 static compiler_error_t variable(compiler_t *compiler, bool can_assign)
 {
     compiler_error_t error;
-    token_t var = compiler->prev;
+    token_t var = prev_token(compiler);
 
     int local_index = get_local(compiler, var);
 
@@ -315,7 +317,7 @@ static compiler_error_t variable(compiler_t *compiler, bool can_assign)
 static compiler_error_t binary(compiler_t *compiler, UNUSED bool can_assign)
 {
     compiler_error_t error;
-    token_type_t op = compiler->prev.type;
+    token_type_t op = prev_token(compiler).type;
 
     rule_t rule = rules[op];
     if ((error = expression(compiler, rule.precedence + 1)) != 0)
@@ -357,7 +359,7 @@ static compiler_error_t binary(compiler_t *compiler, UNUSED bool can_assign)
 static compiler_error_t unary(compiler_t *compiler, UNUSED bool can_assign)
 {
     compiler_error_t error;
-    token_type_t op = compiler->prev.type;
+    token_type_t op = prev_token(compiler).type;
 
     if ((error = expression(compiler, PREC_UNARY)) != 0)
         return error;
@@ -387,11 +389,11 @@ static compiler_error_t grouping(compiler_t *compiler, UNUSED bool can_assign)
 
 static compiler_error_t literal(compiler_t *compiler, UNUSED bool can_assign)
 {
-    switch(compiler->prev.type)
+    switch(prev_token(compiler).type)
     {
         case TOKEN_NUMBER:
             {
-                if (program_write(executing_program(compiler), OP_CONSTANT, NUMBER_VAL(strtod(compiler->prev.start, NULL))) < 0)
+                if (program_write(executing_program(compiler), OP_CONSTANT, NUMBER_VAL(strtod(prev_token(compiler).start, NULL))) < 0)
                     return COMPILER_ERROR_OUT_OF_MEMORY;
             } break;
         case TOKEN_NIL:
@@ -413,7 +415,7 @@ static compiler_error_t literal(compiler_t *compiler, UNUSED bool can_assign)
             {
                 if (program_write(executing_program(compiler),
                                   OP_CONSTANT,
-                                  OBJECT_VAL(object_string_new(compiler->prev.start + 1, compiler->prev.length - 2))))
+                                  OBJECT_VAL(object_string_new(prev_token(compiler).start + 1, prev_token(compiler).length - 2))))
                     return COMPILER_ERROR_OUT_OF_MEMORY;
             } break;
         default:
@@ -454,15 +456,25 @@ static compiler_error_t or_(compiler_t *compiler, UNUSED bool can_assign)
     return error;
 }
 
+static inline token_t curr_token(compiler_t *compiler)
+{
+    return compiler->tokenizer_context.curr;
+}
+
+static inline token_t prev_token(compiler_t *compiler)
+{
+    return compiler->tokenizer_context.prev;
+}
+
 static void advance(compiler_t *compiler)
 {
-    compiler->prev = compiler->curr;
-    compiler->curr = tokenizer_next(compiler->tokenizer);
+    compiler->tokenizer_context.prev = curr_token(compiler);
+    compiler->tokenizer_context.curr = tokenizer_next(compiler->tokenizer_context.tokenizer);
 }
 
 static bool consume_if(compiler_t *compiler, const token_type_t type)
 {
-    if (compiler->curr.type != type)
+    if (curr_token(compiler).type != type)
         return false;
 
     advance(compiler);
@@ -474,7 +486,7 @@ static compiler_error_t consume(compiler_t *compiler, const token_type_t type)
     if (!consume_if(compiler, type))
     {
         compiler_error(compiler, "Unexpected token '%s', expected '%s'",
-                       tokenizer_token_name(compiler->curr.type),
+                       tokenizer_token_name(curr_token(compiler).type),
                        tokenizer_token_name(type));
         return COMPILER_ERROR_UNEXPECTED_TOKEN;
     }
@@ -484,31 +496,33 @@ static compiler_error_t consume(compiler_t *compiler, const token_type_t type)
 
 static void begin_scope(compiler_t *compiler)
 {
-    compiler->locals.depth++;
+    compiler->context.locals.depth++;
 }
 
 static void end_scope(compiler_t *compiler)
 {
-    compiler->locals.depth--;
+    compiler_locals_t *locals = &compiler->context.locals;
+    locals->depth--;
 
-    while (compiler->locals.count > 0 && compiler->locals.items[compiler->locals.count - 1].depth > compiler->locals.depth)
+    while (locals->count > 0 && locals->items[locals->count - 1].depth > locals->depth)
         remove_local(compiler);
 }
 
 static bool is_global_scope(compiler_t *compiler)
 {
-    return compiler->locals.depth == 0;
+    return compiler->context.locals.depth == 0;
 }
 
 static void add_local(compiler_t *compiler, token_t var)
 {
-    compiler->locals.items[compiler->locals.count++] = (compiler_local_t){var, compiler->locals.depth};
+    compiler_locals_t *locals = &compiler->context.locals;
+    locals->items[locals->count++] = (compiler_local_t){var, locals->depth};
 }
 
 static int get_local(compiler_t *compiler, token_t var)
 {
-    for (int i = (int)compiler->locals.count - 1; i >= 0; --i)
-        if (tokenizer_token_cmp(compiler->locals.items[i].token, var))
+    for (int i = (int)compiler->context.locals.count - 1; i >= 0; --i)
+        if (tokenizer_token_cmp(compiler->context.locals.items[i].token, var))
             return i;
 
     return -1;
@@ -516,7 +530,7 @@ static int get_local(compiler_t *compiler, token_t var)
 
 static void remove_local(compiler_t *compiler)
 {
-    compiler->locals.count--;
+    compiler->context.locals.count--;
     program_write(executing_program(compiler), OP_POP);
 }
 
@@ -533,15 +547,16 @@ static void patch_jump(compiler_t *compiler, int offset)
 
 void compiler_init(compiler_t *compiler, tokenizer_t *tokenizer)
 {
-    compiler->tokenizer = tokenizer;
-    compiler->function = object_function_new(CLOX_MAIN_FN, 0);
-    compiler->curr = tokenizer_next(tokenizer);
-    compiler->locals = (compiler_locals_t){0};
+    compiler->tokenizer_context = (tokenizer_context_t){
+        .tokenizer = tokenizer,
+        .curr = tokenizer_next(tokenizer)};
+
+    compiler->context = compiler_context_new();
 }
 
 void compiler_free(compiler_t *compiler)
 {
-    object_function_destroy(compiler->function);
+    compiler_context_destroy(&compiler->context);
 }
 
 void compiler_error(compiler_t *compiler, const char *fmt, ...)
@@ -564,7 +579,7 @@ compiler_error_t compiler_run(compiler_t *compiler, const char *source)
 
     compiler_error_t error;
 
-    while (compiler->curr.type != TOKEN_EOF)
+    while (curr_token(compiler).type != TOKEN_EOF)
     {
         if ((error = declaration(compiler)) != 0)
             return error;
@@ -576,4 +591,16 @@ compiler_error_t compiler_run(compiler_t *compiler, const char *source)
     program_write(executing_program(compiler), OP_RETURN);
 
     return COMPILER_ERROR_NONE;
+}
+
+compiler_context_t compiler_context_new()
+{
+    return (compiler_context_t){
+        .function = object_function_new(CLOX_MAIN_FN, 0),
+        .locals = (compiler_locals_t){0}};
+}
+
+void compiler_context_destroy(compiler_context_t *context)
+{
+    object_function_destroy(context->function);
 }

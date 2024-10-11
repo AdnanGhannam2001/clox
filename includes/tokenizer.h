@@ -46,6 +46,13 @@ typedef struct tokenizer
     size_t line;
 } tokenizer_t;
 
+typedef struct tokenizer_context
+{
+    tokenizer_t *tokenizer;
+    token_t curr;
+    token_t prev;
+} tokenizer_context_t;
+
 void tokenizer_init(tokenizer_t *, const char *source);
 token_t tokenizer_next(tokenizer_t *);
 const char* tokenizer_token_name(const token_type_t);

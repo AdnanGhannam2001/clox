@@ -39,7 +39,9 @@ typedef enum op_code
     OP_COUNT
 } op_code_t;
 
-ARRAY(chunk_array, uint8_t)
+typedef uint8_t chunk;
+
+ARRAY(chunk_array, chunk)
 
 // ValueArray
 ARRAY(value_array, value_t)

@@ -536,8 +536,8 @@ static void remove_local(compiler_t *compiler)
 
 static void patch_jump_to(compiler_t *compiler, int offset, int to)
 {
-    executing_program(compiler)->chunks.items[offset + 0] = (uint8_t)((to >> 8) & 0xFF);
-    executing_program(compiler)->chunks.items[offset + 1] = (uint8_t)((to >> 0) & 0xFF);
+    executing_program(compiler)->chunks.items[offset + 0] = (chunk)((to >> 8) & 0xFF);
+    executing_program(compiler)->chunks.items[offset + 1] = (chunk)((to >> 0) & 0xFF);
 }
 
 static void patch_jump(compiler_t *compiler, int offset)

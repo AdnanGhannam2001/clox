@@ -13,7 +13,7 @@
 typedef struct call_frame
 {
     object_function_t *function;
-    uint8_t *ip;
+    chunk *ip;
     value_t *fp;
 } call_frame_t;
 

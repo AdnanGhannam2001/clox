@@ -40,7 +40,7 @@ static interpret_result_t vm_run(vm_t *vm)
 
     while (true)
     {
-        uint8_t instruction = READ_INSTRUCTION();
+        chunk instruction = READ_INSTRUCTION();
         switch(instruction)
         {
             case OP_CONSTANT:

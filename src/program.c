@@ -1,7 +1,7 @@
 #include "program.h"
 #include "object.h"
 
-ARRAY_IMPL(chunk_array, uint8_t)
+ARRAY_IMPL(chunk_array, chunk)
 ARRAY_IMPL(value_array, value_t)
 
 void program_init(program_t *program)
@@ -14,7 +14,7 @@ int program_write(program_t *program, op_code_t value, ...)
 {
     assert(value < OP_COUNT);
 
-    chunk_array_write(&program->chunks, (uint8_t)value);
+    chunk_array_write(&program->chunks, (chunk)value);
 
     va_list args;
     va_start(args, value);
@@ -35,7 +35,7 @@ int program_write(program_t *program, op_code_t value, ...)
             }
 
             value_array_write(&program->constants, va_arg(args, value_t));
-            chunk_array_write(&program->chunks, (uint8_t)program->constants.count - 1);
+            chunk_array_write(&program->chunks, (chunk)program->constants.count - 1);
         } break;
 
     case OP_JUMP:

@@ -14,10 +14,10 @@ static interpret_result_t execute(const char *source)
         return INTERPRET_RESULT_COMPILE_ERROR;
 
 #if CLOX_DEBUG_PRINT
-    program_disassemble(&compiler.context.function->program, "Main Program");
+    program_disassemble(&compiler.context->function->program, "Main Program");
 #endif // CLOX_DEBUG_PRINT
 
-    vm_interpret(&vm, compiler.context.function);
+    vm_interpret(&vm, compiler.context->function);
     compiler_free(&compiler);
 
     return INTERPRET_RESULT_OK;

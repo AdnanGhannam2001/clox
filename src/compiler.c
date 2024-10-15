@@ -3,6 +3,7 @@
 static program_t *executing_program(compiler_t *);
 
 static compiler_error_t declaration(compiler_t *);
+static compiler_error_t function_declaration(compiler_t *);
 static compiler_error_t var_declaration(compiler_t *);
 static compiler_error_t statement(compiler_t *);
 static compiler_error_t statement_if(compiler_t *);
@@ -30,6 +31,7 @@ static void end_scope(compiler_t *);
 static bool is_global_scope(compiler_t *);
 static void add_local(compiler_t *, token_t);
 static int get_local(compiler_t *, token_t);
+static void define_variable(compiler_t *, token_t);
 static void remove_local(compiler_t *);
 
 static void patch_jump_to(compiler_t *, int, int);
@@ -81,15 +83,67 @@ static const rule_t rules[] =
 
 static program_t *executing_program(compiler_t *compiler)
 {
-    return &compiler->context.function->program;
+    return &compiler->context->function->program;
 }
 
 static compiler_error_t declaration(compiler_t *compiler)
 {
+    if (consume_if(compiler, TOKEN_FUN))
+        return function_declaration(compiler);
     if (consume_if(compiler, TOKEN_VAR))
         return var_declaration(compiler);
     
     return statement(compiler);
+}
+
+static compiler_error_t function_declaration(compiler_t *compiler)
+{
+    compiler_error_t error;
+    if ((error = consume(compiler, TOKEN_IDENTIFIER)) != 0)
+        return error;
+
+    token_t function_name = prev_token(compiler);
+    define_variable(compiler, function_name);
+
+    compiler_context_t *context = compiler_context_new(compiler->context, ""); // TODO
+    compiler->context = context;
+    begin_scope(compiler);
+
+    if ((error = consume(compiler, TOKEN_LEFT_PAREN)) != 0)
+        return error;
+
+    if (curr_token(compiler).type != TOKEN_RIGHT_PAREN)
+    {
+        do
+        {
+            if (compiler->context->function->arity++ > CLOX_LOCALS_MAX)
+            {
+                compiler_error(compiler, "Can't have more than %d parameters.", CLOX_LOCALS_MAX);
+                return COMPILER_ERROR_UNEXPECTED_TOKEN;
+            }
+
+            if ((error = consume(compiler, TOKEN_IDENTIFIER)) != 0)
+                return error;
+
+            token_t param_name = prev_token(compiler);
+            define_variable(compiler, param_name);
+        } while (consume_if(compiler, TOKEN_COMMA));
+    }
+
+    compiler->context->function->name = object_string_new(function_name.start, function_name.length);
+
+    if ((error = consume(compiler, TOKEN_RIGHT_PAREN)) != 0)
+        return error;
+    if ((error = consume(compiler, TOKEN_LEFT_BRACE)) != 0)
+        return error;
+    if ((error = block(compiler)) != 0)
+        return error;
+
+    compiler->context = context->enclosing;
+    object_function_t *function = compiler_context_destroy(context);
+    program_write(executing_program(compiler), OP_CONSTANT, OBJECT_VAL(function));
+
+    return error;
 }
 
 static compiler_error_t var_declaration(compiler_t *compiler)
@@ -111,10 +165,7 @@ static compiler_error_t var_declaration(compiler_t *compiler)
     if ((error = consume(compiler, TOKEN_SEMICOLON)) != 0)
         return error;
 
-    if (is_global_scope(compiler))
-        program_write(executing_program(compiler), OP_DEFINE_GLOBAL, OBJECT_VAL(object_string_new(var.start, var.length)));
-    else
-        add_local(compiler, var);
+    define_variable(compiler, var);
 
     return error;
 }
@@ -496,12 +547,12 @@ static compiler_error_t consume(compiler_t *compiler, const token_type_t type)
 
 static void begin_scope(compiler_t *compiler)
 {
-    compiler->context.locals.depth++;
+    compiler->context->locals.depth++;
 }
 
 static void end_scope(compiler_t *compiler)
 {
-    compiler_locals_t *locals = &compiler->context.locals;
+    compiler_locals_t *locals = &compiler->context->locals;
     locals->depth--;
 
     while (locals->count > 0 && locals->items[locals->count - 1].depth > locals->depth)
@@ -510,27 +561,35 @@ static void end_scope(compiler_t *compiler)
 
 static bool is_global_scope(compiler_t *compiler)
 {
-    return compiler->context.locals.depth == 0;
+    return compiler->context->locals.depth == 0;
 }
 
 static void add_local(compiler_t *compiler, token_t var)
 {
-    compiler_locals_t *locals = &compiler->context.locals;
+    compiler_locals_t *locals = &compiler->context->locals;
     locals->items[locals->count++] = (compiler_local_t){var, locals->depth};
 }
 
 static int get_local(compiler_t *compiler, token_t var)
 {
-    for (int i = (int)compiler->context.locals.count - 1; i >= 0; --i)
-        if (tokenizer_token_cmp(compiler->context.locals.items[i].token, var))
+    for (int i = (int)compiler->context->locals.count - 1; i >= 0; --i)
+        if (tokenizer_token_cmp(compiler->context->locals.items[i].token, var))
             return i;
 
     return -1;
 }
 
+static void define_variable(compiler_t *compiler, token_t token)
+{
+    if (is_global_scope(compiler))
+        program_write(executing_program(compiler), OP_DEFINE_GLOBAL, OBJECT_VAL(object_string_new(token.start, token.length)));
+    else
+        add_local(compiler, token);
+}
+
 static void remove_local(compiler_t *compiler)
 {
-    compiler->context.locals.count--;
+    compiler->context->locals.count--;
     program_write(executing_program(compiler), OP_POP);
 }
 
@@ -551,12 +610,12 @@ void compiler_init(compiler_t *compiler, tokenizer_t *tokenizer)
         .tokenizer = tokenizer,
         .curr = tokenizer_next(tokenizer)};
 
-    compiler->context = compiler_context_new();
+    compiler->context = compiler_context_new(NULL, CLOX_MAIN_FN);
 }
 
 void compiler_free(compiler_t *compiler)
 {
-    compiler_context_destroy(&compiler->context);
+    object_function_destroy(compiler_context_destroy(compiler->context));
 }
 
 void compiler_error(compiler_t *compiler, const char *fmt, ...)
@@ -593,14 +652,21 @@ compiler_error_t compiler_run(compiler_t *compiler, const char *source)
     return COMPILER_ERROR_NONE;
 }
 
-compiler_context_t compiler_context_new()
+compiler_context_t *compiler_context_new(compiler_context_t *enclosing, const char *function_name)
 {
-    return (compiler_context_t){
-        .function = object_function_new(CLOX_MAIN_FN, 0),
+    compiler_context_t *context = NULL;
+    context = memory_allocate(context, sizeof(compiler_context_t), false);
+    *context = (compiler_context_t){
+        .enclosing = enclosing,
+        .function = object_function_new(function_name, 0),
         .locals = (compiler_locals_t){0}};
+    
+    return context;
 }
 
-void compiler_context_destroy(compiler_context_t *context)
+object_function_t *compiler_context_destroy(compiler_context_t *context)
 {
-    object_function_destroy(context->function);
+    object_function_t *function = context->function;
+    memory_free(context);
+    return function;
 }

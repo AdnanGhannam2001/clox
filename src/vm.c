@@ -177,6 +177,7 @@ static interpret_result_t vm_run(vm_t *vm)
 
             case OP_RETURN:
                 {
+                    value_stack_pop(&vm->stack);
                     return INTERPRET_RESULT_OK;
                 }
         }

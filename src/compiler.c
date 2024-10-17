@@ -17,6 +17,7 @@ static compiler_error_t binary(compiler_t *, UNUSED bool);
 static compiler_error_t unary(compiler_t *, UNUSED bool);
 static compiler_error_t grouping(compiler_t *, UNUSED bool);
 static compiler_error_t literal(compiler_t *, UNUSED bool);
+static compiler_error_t call(compiler_t *, UNUSED bool);
 static compiler_error_t and_(compiler_t *, UNUSED bool);
 static compiler_error_t or_(compiler_t *, UNUSED bool);
 
@@ -39,7 +40,7 @@ static void patch_jump(compiler_t *, int);
 
 static const rule_t rules[] =
 {
-  [TOKEN_LEFT_PAREN]    = {grouping, /*call*/NULL,   PREC_CALL},
+  [TOKEN_LEFT_PAREN]    = {grouping, call,   PREC_CALL},
   [TOKEN_RIGHT_PAREN]   = {NULL,     NULL,   PREC_NONE},
   [TOKEN_LEFT_BRACE]    = {NULL,     NULL,   PREC_NONE},
   [TOKEN_RIGHT_BRACE]   = {NULL,     NULL,   PREC_NONE},
@@ -103,9 +104,12 @@ static compiler_error_t function_declaration(compiler_t *compiler)
         return error;
 
     token_t function_name = prev_token(compiler);
-    define_variable(compiler, function_name);
 
-    compiler_context_t *context = compiler_context_new(compiler->context, ""); // TODO
+    char value[function_name.length + 1];
+    value[function_name.length] = 0;
+    strncpy(value, function_name.start, function_name.length);
+
+    compiler_context_t *context = compiler_context_new(compiler->context, value);
     compiler->context = context;
     begin_scope(compiler);
 
@@ -142,6 +146,7 @@ static compiler_error_t function_declaration(compiler_t *compiler)
     compiler->context = context->enclosing;
     object_function_t *function = compiler_context_destroy(context);
     program_write(executing_program(compiler), OP_CONSTANT, OBJECT_VAL(function));
+    define_variable(compiler, function_name);
 
     return error;
 }
@@ -476,6 +481,35 @@ static compiler_error_t literal(compiler_t *compiler, UNUSED bool can_assign)
     return COMPILER_ERROR_NONE;
 }
 
+static compiler_error_t call(compiler_t *compiler, UNUSED bool can_assign)
+{
+    compiler_error_t error;
+    uint8_t args_count = 0;
+
+    if (curr_token(compiler).type != TOKEN_RIGHT_PAREN)
+    {
+        do
+        {
+            if (compiler->context->function->arity++ > CLOX_LOCALS_MAX)
+            {
+                compiler_error(compiler, "Can't have more than %d parameters.", CLOX_LOCALS_MAX);
+                return COMPILER_ERROR_UNEXPECTED_TOKEN;
+            }
+
+            if ((error = expression(compiler, PREC_ASSIGNMENT)) != 0)
+                return error;
+            args_count++;
+        } while (consume_if(compiler, TOKEN_COMMA));
+    }
+
+    if ((error = consume(compiler, TOKEN_RIGHT_PAREN)) != 0)
+        return error;
+
+    program_write(executing_program(compiler), OP_CALL, args_count);
+
+    return error;
+}
+
 static compiler_error_t and_(compiler_t *compiler, UNUSED bool can_assign)
 {
     compiler_error_t error = COMPILER_ERROR_NONE;
@@ -647,6 +681,7 @@ compiler_error_t compiler_run(compiler_t *compiler, const char *source)
     if ((error = consume(compiler, TOKEN_EOF)) != 0)
         return error;
 
+    program_write(executing_program(compiler), OP_NIL);
     program_write(executing_program(compiler), OP_RETURN);
 
     return COMPILER_ERROR_NONE;
@@ -667,6 +702,10 @@ compiler_context_t *compiler_context_new(compiler_context_t *enclosing, const ch
 object_function_t *compiler_context_destroy(compiler_context_t *context)
 {
     object_function_t *function = context->function;
+
+    program_write(&function->program, OP_NIL);
+    program_write(&function->program, OP_RETURN);
+
     memory_free(context);
     return function;
 }

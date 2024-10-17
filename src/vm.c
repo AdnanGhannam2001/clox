@@ -1,5 +1,18 @@
 #include "vm.h"
 
+static inline bool callable(value_t value)
+{
+    return IS_OBJECT(value) && IS_FUNCTION(value);
+}
+
+static void call(vm_t *vm, object_function_t *function, uint8_t args_count)
+{
+    call_frame_t *frame = &vm->frames.items[vm->frames.count++];
+    frame->function = function;
+    frame->ip = function->program.chunks.items;
+    frame->fp = vm->stack.items - args_count - 1;
+}
+
 void vm_init(vm_t *vm)
 {
     value_stack_init(&vm->stack);
@@ -37,6 +50,7 @@ static interpret_result_t vm_run(vm_t *vm)
         }                                                                        \
         value_stack_push(&vm->stack, cast(AS_NUMBER(left) op AS_NUMBER(right))); \
     } while (0);
+#define PEEK(vm, distance) vm->stack.items[vm->stack.count - distance - 1]
 
     while (true)
     {
@@ -67,6 +81,7 @@ static interpret_result_t vm_run(vm_t *vm)
                         vm_error(vm, "Used of undefined variable: '%.*s'", (int)name->length, name->data);
                         return INTERPRET_RESULT_RUNTIME_ERROR;
                     }
+
                     value_stack_push(&vm->stack, table_entry_get(&vm->globals, name)->value);
                 } break;
             case OP_SET_GLOBAL:
@@ -175,10 +190,32 @@ static interpret_result_t vm_run(vm_t *vm)
                     frame->ip = frame->function->program.chunks.items + ((READ_INSTRUCTION() << 8) | READ_INSTRUCTION());
                 } break;
 
+            case OP_CALL:
+                {
+                    uint8_t args_count = READ_INSTRUCTION();
+
+                    value_t callee = PEEK(vm, args_count);
+                    if (!callable(callee))
+                    {
+                        vm_error(vm, "Value is not callable");
+                        return INTERPRET_RESULT_RUNTIME_ERROR;
+                    }
+
+                    call(vm, AS_FUNCTION(callee), args_count);
+
+                    frame = &vm->frames.items[vm->frames.count - 1];
+                } break;
             case OP_RETURN:
                 {
-                    value_stack_pop(&vm->stack);
-                    return INTERPRET_RESULT_OK;
+                    value_t result = value_stack_pop(&vm->stack);
+                    if (--vm->frames.count > 0)
+                    {
+                        value_stack_pop(&vm->stack);
+                        return INTERPRET_RESULT_OK;
+                    }
+
+                    value_stack_push(&vm->stack, result);
+                    frame = &vm->frames.items[vm->frames.count - 1];
                 }
         }
 
@@ -187,6 +224,7 @@ static interpret_result_t vm_run(vm_t *vm)
 #endif // CLOX_DEBUG_PRINT
     }
 
+#undef PEEK
 #undef BINARY_OP
 #undef READ_INSTRUCTION
 #undef READ_STRING
@@ -200,6 +238,7 @@ interpret_result_t vm_interpret(vm_t *vm, object_function_t *function)
     vm->frames.items[0].ip = function->program.chunks.items;
     vm->frames.items[0].fp = vm->stack.items;
     value_stack_push(&vm->stack, OBJECT_VAL(function));
+    call(vm, function, 0);
 
     return vm_run(vm);
 }

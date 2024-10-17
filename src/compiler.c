@@ -7,6 +7,7 @@ static compiler_error_t function_declaration(compiler_t *);
 static compiler_error_t var_declaration(compiler_t *);
 static compiler_error_t statement(compiler_t *);
 static compiler_error_t statement_if(compiler_t *);
+static compiler_error_t statement_return(compiler_t *);
 static compiler_error_t statement_while(compiler_t *);
 static compiler_error_t statement_expression(compiler_t *);
 static compiler_error_t block(compiler_t *);
@@ -193,6 +194,10 @@ static compiler_error_t statement(compiler_t *compiler)
     {
         error = statement_if(compiler);
     }
+    else if (consume_if(compiler, TOKEN_RETURN))
+    {
+        error = statement_return(compiler);
+    }
     else if (consume_if(compiler, TOKEN_WHILE))
     {
         error = statement_while(compiler);
@@ -236,6 +241,28 @@ static compiler_error_t statement_if(compiler_t *compiler)
     program_write(executing_program(compiler), OP_POP);
 
     return error;
+}
+
+static compiler_error_t statement_return(compiler_t *compiler)
+{
+    if (strncmp(CLOX_MAIN_FN, compiler->context->function->name->data, compiler->context->function->name->length) == 0)
+    {
+        compiler_error(compiler, "Can't have a 'return statement' in the main function.");
+        return COMPILER_ERROR_UNEXPECTED_TOKEN;
+    }
+
+    if (curr_token(compiler).type == TOKEN_SEMICOLON)
+    {
+        program_write(executing_program(compiler), OP_NIL);
+        program_write(executing_program(compiler), OP_RETURN);
+    }
+    else
+    {
+        expression(compiler, PREC_ASSIGNMENT);
+        program_write(executing_program(compiler), OP_RETURN);
+    }
+
+    return consume(compiler, TOKEN_SEMICOLON);
 }
 
 static compiler_error_t statement_while(compiler_t *compiler)

@@ -208,11 +208,9 @@ static interpret_result_t vm_run(vm_t *vm)
             case OP_RETURN:
                 {
                     value_t result = value_stack_pop(&vm->stack);
-                    if (--vm->frames.count > 0)
-                    {
-                        value_stack_pop(&vm->stack);
+                    value_stack_pop(&vm->stack);
+                    if (--vm->frames.count <= 1)
                         return INTERPRET_RESULT_OK;
-                    }
 
                     value_stack_push(&vm->stack, result);
                     frame = &vm->frames.items[vm->frames.count - 1];

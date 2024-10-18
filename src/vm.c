@@ -35,6 +35,16 @@ void vm_error(vm_t *vm, const char *fmt, ...)
     vfprintf(stderr, fmt, args);
     va_end(args);
     fputc('\n', stderr);
+    
+    if (vm->frames.count < CLOX_FRAMES_MAX)
+    {
+        fprintf(stderr, "Stack Trace:\n------------\n");
+        for (size_t i = vm->frames.count - 1; i > 0; --i)
+        {
+            const object_string_t *function_name = vm->frames.items[i].function->name;
+            fprintf(stderr, "  - %.*s\n", (int)function_name->length, function_name->data);
+        }
+    }
 
     value_stack_init(&vm->stack);
 }

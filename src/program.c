@@ -64,9 +64,9 @@ void program_free(program_t *program)
     value_array_free(&program->constants);
 }
 
-void program_disassemble(program_t *program, const char *name)
+void program_disassemble(const program_t *program, const char *name)
 {
-    printf("=== %s ===\n", name);
+    printf("\n=== %s ===\n", name);
 
     for (size_t i = 0; i < program->chunks.count; ++i)
     {
@@ -75,7 +75,7 @@ void program_disassemble(program_t *program, const char *name)
     }
 }
 
-void program_instruction_disassemble(program_t *program, size_t *i)
+void program_instruction_disassemble(const program_t *program, size_t *i)
 {
     switch (program->chunks.items[*i])
     {

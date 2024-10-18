@@ -5,12 +5,20 @@ static inline bool callable(value_t value)
     return IS_OBJECT(value) && IS_FUNCTION(value);
 }
 
-static void call(vm_t *vm, object_function_t *function, uint8_t args_count)
+static interpret_result_t call(vm_t *vm, object_function_t *function, uint8_t args_count)
 {
     call_frame_t *frame = &vm->frames.items[vm->frames.count++];
+
+    if (vm->frames.count >= CLOX_FRAMES_MAX)
+    {
+        vm_error(vm, "Stack overflow.");
+        return INTERPRET_RESULT_RUNTIME_ERROR;
+    }
+
     frame->function = function;
     frame->ip = function->program.chunks.items;
-    frame->fp = vm->stack.items - args_count - 1;
+    frame->fp = vm->stack.items + vm->stack.count - args_count;
+    return INTERPRET_RESULT_OK;
 }
 
 void vm_init(vm_t *vm)
@@ -201,18 +209,23 @@ static interpret_result_t vm_run(vm_t *vm)
                         return INTERPRET_RESULT_RUNTIME_ERROR;
                     }
 
-                    call(vm, AS_FUNCTION(callee), args_count);
+                    interpret_result_t result;
+                    if ((result = call(vm, AS_FUNCTION(callee), args_count)) != INTERPRET_RESULT_OK)
+                        return result;
 
                     frame = &vm->frames.items[vm->frames.count - 1];
                 } break;
             case OP_RETURN:
                 {
                     value_t result = value_stack_pop(&vm->stack);
-                    value_stack_pop(&vm->stack);
+                    while (!IS_FUNCTION(value_stack_top(&vm->stack)))
+                        value_stack_pop(&vm->stack); // Pops all values after the callee
+
+                    value_stack_pop(&vm->stack); // Pops the callee
                     if (--vm->frames.count <= 1)
                         return INTERPRET_RESULT_OK;
 
-                    value_stack_push(&vm->stack, result);
+                    value_stack_push(&vm->stack, result); // Pushes the return value
                     frame = &vm->frames.items[vm->frames.count - 1];
                 }
         }

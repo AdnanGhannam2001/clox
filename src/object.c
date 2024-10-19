@@ -1,16 +1,16 @@
 #include "object.h"
 
-// TODO: Consider moving this to the memory management part in the future
 object_t *object_new(const object_type_t type, const size_t type_size)
 {
-    object_t *object = (object_t *)malloc(type_size);
+    object_t *object = NULL;
+    object = (object_t *)memory_allocate(object, type_size, false);
     object->type = type;
     return object;
 }
 
 void object_destroy(object_t *object)
 {
-    free(object);
+    memory_free(object);
 }
 
 cmp_t object_cmp(const object_t *a, const object_t *b)
@@ -60,14 +60,14 @@ object_string_t *object_string_new(const char *data, const size_t length)
 {
     object_string_t *string = (object_string_t *)object_new(OBJECT_STRING, sizeof(object_string_t));
     string->length = length;
-    string->data = (char *)malloc(sizeof(char) * length);
+    string->data = (char *)memory_allocate(string->data, sizeof(char) * length, false);
     memcpy(string->data, data, length);
     return string;
 }
 
 void object_string_destroy(object_string_t *object_string)
 {
-    free(object_string->data);
+    memory_free(object_string->data);
     object_destroy((object_t *)object_string);
 }
 
@@ -75,7 +75,7 @@ object_string_t *object_string_concat(object_string_t *a, object_string_t *b)
 {
     object_string_t *string = (object_string_t *)object_new(OBJECT_STRING, sizeof(object_string_t));
     string->length = a->length + b->length;
-    string->data = (char *)malloc(sizeof(char) * string->length);
+    string->data = (char *)memory_allocate(string->data, sizeof(char) * string->length, false);
     memcpy(string->data, b->data, b->length);
     memcpy(string->data + b->length, a->data, a->length);
 

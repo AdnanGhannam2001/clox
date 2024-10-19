@@ -4,6 +4,7 @@
 #include "common.h"
 #include "value.h"
 #include "program.h"
+#include "memory.h"
 
 typedef enum object_type
 {

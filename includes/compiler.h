@@ -67,7 +67,9 @@ typedef enum precedence
     PREC_FACTOR,     // * /
     PREC_UNARY,      // ! -
     PREC_CALL,       // . ()
-    PREC_PRIMARY
+    PREC_PRIMARY,
+
+    PREC_COUNT
 } precedence_t;
 
 typedef compiler_error_t (*parse_fn)(compiler_t *, bool);

@@ -33,6 +33,8 @@ typedef enum interpret_result
     INTERPRET_RESULT_OK,
     INTERPRET_RESULT_COMPILE_ERROR,
     INTERPRET_RESULT_RUNTIME_ERROR,
+
+    INTERPRET_RESULT_COUNT,
 } interpret_result_t;
 
 #endif // CLOX_COMMON_H

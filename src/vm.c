@@ -2,23 +2,46 @@
 
 static inline bool callable(value_t value)
 {
-    return IS_OBJECT(value) && IS_FUNCTION(value);
+    return IS_OBJECT(value) && (IS_FUNCTION(value) || IS_NATIVE(value));
 }
 
-static interpret_result_t call(vm_t *vm, object_function_t *function, uint8_t args_count)
+static interpret_result_t call(vm_t *vm, value_t value, uint8_t args_count)
 {
-    call_frame_t *frame = &vm->frames.items[vm->frames.count++];
-
-    if (vm->frames.count >= CLOX_FRAMES_MAX)
+    value_t *stack_top = vm->stack.items + vm->stack.count - args_count;
+    switch (AS_OBJECT(value)->type)
     {
-        vm_error(vm, "Stack overflow.");
-        return INTERPRET_RESULT_RUNTIME_ERROR;
+    case OBJECT_FUNCTION:
+        {
+            call_frame_t *frame = &vm->frames.items[vm->frames.count++];
+            if (vm->frames.count >= CLOX_FRAMES_MAX)
+            {
+                vm_error(vm, "Stack overflow.");
+                return INTERPRET_RESULT_RUNTIME_ERROR;
+            }
+
+            object_function_t *function = AS_FUNCTION(value);
+            frame->function = function;
+            frame->ip = function->program.chunks.items;
+            frame->fp = stack_top;
+        } break;
+    case OBJECT_NATIVE:
+        {
+            object_native_t *native = AS_NATIVE(value);
+            value_t result = native->function(args_count, stack_top);
+            vm->stack.count -= args_count + 1;
+            value_stack_push(&vm->stack, result);
+        } break;
+
+    default:
+        UNREACHABLE;
     }
 
-    frame->function = function;
-    frame->ip = function->program.chunks.items;
-    frame->fp = vm->stack.items + vm->stack.count - args_count;
     return INTERPRET_RESULT_OK;
+}
+
+static void define_native(vm_t *vm, const char* name, native_fn function)
+{
+    table_entry_set(&vm->globals, object_string_new(name, strlen(name)), OBJECT_VAL(object_native_new(function)));
 }
 
 void vm_init(vm_t *vm)
@@ -220,7 +243,7 @@ static interpret_result_t vm_run(vm_t *vm)
                     }
 
                     interpret_result_t result;
-                    if ((result = call(vm, AS_FUNCTION(callee), args_count)) != INTERPRET_RESULT_OK)
+                    if ((result = call(vm, callee, args_count)) != INTERPRET_RESULT_OK)
                         return result;
 
                     frame = &vm->frames.items[vm->frames.count - 1];
@@ -252,14 +275,23 @@ static interpret_result_t vm_run(vm_t *vm)
 #undef READ_CONSTANT
 }
 
+// Native Function
+static value_t clk(UNUSED size_t args_count, UNUSED value_t *args)
+{
+    return NUMBER_VAL((double)clock() / CLOCKS_PER_SEC);
+}
+
 interpret_result_t vm_interpret(vm_t *vm, object_function_t *function)
 {
     vm->frames.count = 1;
     vm->frames.items[0].function = function;
     vm->frames.items[0].ip = function->program.chunks.items;
     vm->frames.items[0].fp = vm->stack.items;
+
+    define_native(vm, "clock", clk);
+
     value_stack_push(&vm->stack, OBJECT_VAL(function));
-    call(vm, function, 0);
+    call(vm, OBJECT_VAL(function), 0);
 
     return vm_run(vm);
 }

@@ -1,6 +1,7 @@
 #ifndef CLOX_VM_H
 #define CLOX_VM_H
 
+#include <time.h>
 #include "common.h"
 #include "program.h"
 #include "value.h"

@@ -17,6 +17,7 @@
 typedef struct object object_t;
 typedef struct object_string object_string_t;
 typedef struct object_function object_function_t;
+typedef struct object_native object_native_t;
 
 typedef enum cmp
 {

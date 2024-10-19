@@ -9,6 +9,7 @@ typedef enum object_type
 {
     OBJECT_STRING,
     OBJECT_FUNCTION,
+    OBJECT_NATIVE,
 
     OBJECT_COUNT
 } object_type_t;
@@ -25,7 +26,6 @@ struct object_string
     char* data;
 };
 
-// TODO: Add a way to seperate 'main' & 'native' & 'defined' functions
 struct object_function
 {
     object_t obj;
@@ -34,13 +34,23 @@ struct object_function
     program_t program;
 };
 
+typedef value_t (*native_fn)(size_t args_count, value_t *args);
+
+struct object_native
+{
+    object_t obj;
+    native_fn function;
+};
+
 #define OBJECT_TYPE(value) (AS_OBJECT(value)->type)
 
 #define IS_STRING(value) (IS_OBJECT(value) && (AS_OBJECT(value)->type) == OBJECT_STRING)
 #define IS_FUNCTION(value) (IS_OBJECT(value) && (AS_OBJECT(value)->type) == OBJECT_FUNCTION)
+#define IS_NATIVE(value) (IS_OBJECT(value) && (AS_OBJECT(value)->type) == OBJECT_NATIVE)
 
 #define AS_STRING(value) ((object_string_t *)AS_OBJECT(value))
 #define AS_FUNCTION(value) ((object_function_t *)AS_OBJECT(value))
+#define AS_NATIVE(value) ((object_native_t *)AS_OBJECT(value))
 
 object_t *object_new(const object_type_t, const size_t);
 void object_destroy(object_t *);
@@ -54,5 +64,8 @@ bool object_string_cmp(const object_string_t *, const object_string_t *);
 
 object_function_t *object_function_new(const char *, const size_t);
 void object_function_destroy(object_function_t *);
+
+object_native_t *object_native_new(native_fn);
+void object_native_destroy(object_native_t *);
 
 #endif // CLOX_OBJECT_H

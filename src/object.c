@@ -47,6 +47,10 @@ void object_print(const object_t *object)
             const object_function_t *function = (const object_function_t *)object;
             printf("<fn '%.*s'> ", (int)function->name->length, function->name->data);
         } break;
+    case OBJECT_NATIVE:
+        {
+            printf("<fn native> ");
+        } break;
     default:
         UNREACHABLE;
     }
@@ -101,4 +105,17 @@ void object_function_destroy(object_function_t *function)
     program_free(&function->program);
     object_string_destroy(function->name);
     object_destroy((object_t *)function);
+}
+
+object_native_t *object_native_new(native_fn function)
+{
+    object_native_t *native = (object_native_t *)object_new(OBJECT_NATIVE, sizeof(object_native_t));
+    native->function = function;
+
+    return native;
+}
+
+void object_native_destroy(object_native_t *native)
+{
+    object_destroy((object_t *)native);
 }
